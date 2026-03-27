@@ -1,4 +1,4 @@
-NEW_FILE_CODE
+
 package org.example.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;

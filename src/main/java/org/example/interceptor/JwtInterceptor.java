@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 package org.example.interceptor;
 
 import io.jsonwebtoken.Claims;

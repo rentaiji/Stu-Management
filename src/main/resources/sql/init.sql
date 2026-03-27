@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 CREATE DATABASE IF NOT EXISTS stu_manage DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE stu_manage;
 

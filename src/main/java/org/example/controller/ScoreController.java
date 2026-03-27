@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 package org.example.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

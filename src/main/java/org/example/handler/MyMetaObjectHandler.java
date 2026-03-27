@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 package org.example.handler;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;

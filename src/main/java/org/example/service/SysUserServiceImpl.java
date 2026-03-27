@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 package org.example.service.impl;
 
 import cn.hutool.crypto.digest.BCrypt;

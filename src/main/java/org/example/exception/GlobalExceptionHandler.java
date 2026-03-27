@@ -1,4 +1,3 @@
-NEW_FILE_CODE
 package org.example.exception;
 
 import org.example.common.Result;
