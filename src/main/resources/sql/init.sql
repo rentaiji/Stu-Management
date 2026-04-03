@@ -20,6 +20,7 @@ CREATE TABLE sys_department (
 DROP TABLE IF EXISTS sys_user;
 CREATE TABLE sys_user (
     user_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户 ID',
+    user_account VARCHAR(30) NOT NULL UNIQUE COMMENT '用户账号（学号/工号）',
     user_name VARCHAR(30) NOT NULL COMMENT '用户名',
     real_name VARCHAR(30) DEFAULT NULL COMMENT '真实姓名',
     password VARCHAR(100) NOT NULL COMMENT '密码',
@@ -35,8 +36,7 @@ CREATE TABLE sys_user (
     create_time DATETIME DEFAULT NULL COMMENT '创建时间',
     update_time DATETIME DEFAULT NULL COMMENT '更新时间',
     remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志',
-    UNIQUE KEY uk_username (user_name)
+    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 DROP TABLE IF EXISTS sys_role;
@@ -151,10 +151,10 @@ INSERT INTO sys_department (dept_name, dept_code, dept_type, status) VALUES
 ('清华大学', 'THU', 0, '0'),
 ('计算机学院', 'CS', 1, '0');
 
-INSERT INTO sys_user (user_name, real_name, password, user_type, dept_id, status) VALUES 
-('admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
-('teacher001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
-('stu001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
+INSERT INTO sys_user (user_account, user_name, real_name, password, user_type, dept_id, status) VALUES 
+('admin', 'admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
+('T001', 'teacher001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
+('2024001', 'stu001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
 
 INSERT INTO sys_role (role_name, role_key, role_sort, status) VALUES 
 ('学生', 'student', 1, '0'),

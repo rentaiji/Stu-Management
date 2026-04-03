@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页 - 学生综合服务与教学协同平台</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { cursor: pointer; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .sidebar { width: 200px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>学生综合服务与教学协同平台</h1>
+            <div class="user-info">
+                <span>欢迎，{{ currentUser.realName || currentUser.userName }}</span>
+                <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="sidebar">
+                <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
+                    <el-menu-item index="dashboard">
+                        <i class="el-icon-s-home"></i>
+                        <span>首页</span>
+                    </el-menu-item>
+                    <el-menu-item index="myinfo">
+                        <i class="el-icon-user"></i>
+                        <span>个人信息</span>
+                    </el-menu-item>
+                    <el-menu-item index="course">
+                        <i class="el-icon-reading"></i>
+                        <span>我的课程</span>
+                    </el-menu-item>
+                    <el-menu-item index="score">
+                        <i class="el-icon-edit"></i>
+                        <span>我的成绩</span>
+                    </el-menu-item>
+                    <el-menu-item index="select">
+                        <i class="el-icon-circle-check"></i>
+                        <span>选课中心</span>
+                    </el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <!-- 首页 -->
+                <div v-if="currentPage === 'dashboard'" class="card">
+                    <h2>欢迎使用系统</h2>
+                    <p>请选择左侧菜单进行操作</p>
+                </div>
+                
+                <!-- 个人信息 -->
+                <div v-if="currentPage === 'myinfo'" class="card">
+                    <h2>个人信息</h2>
+                    <el-descriptions title="基本信息" :column="2" border>
+                        <el-descriptions-item label="学号">{{ currentUser.userName }}</el-descriptions-item>
+                        <el-descriptions-item label="姓名">{{ currentUser.realName }}</el-descriptions-item>
+                        <el-descriptions-item label="手机号">{{ currentUser.phone || '-' }}</el-descriptions-item>
+                        <el-descriptions-item label="邮箱">{{ currentUser.email || '-' }}</el-descriptions-item>
+                    </el-descriptions>
+                </div>
+
+                <!-- 我的课程 -->
+                <div v-if="currentPage === 'course'" class="card">
+                    <h2>我的课程</h2>
+                    <el-table :data="myCourses" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="credits" label="学分"></el-table-column>
+                        <el-table-column prop="hours" label="学时"></el-table-column>
+                        <el-table-column prop="teacherName" label="授课教师"></el-table-column>
+                        <el-table-column prop="selectStatus" label="状态">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.selectStatus === '0'">已选</span>
+                                <span v-else-if="scope.row.selectStatus === '1'">退课</span>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 成绩管理 -->
+                <div v-if="currentPage === 'score'" class="card">
+                    <h2>成绩管理</h2>
+                    <p>暂无数据</p>
+                </div>
+
+                <!-- 班级管理 -->
+                <div v-if="currentPage === 'class'" class="card">
+                    <h2>班级管理</h2>
+                    <p>暂无数据</p>
+                </div>
+
+                <!-- 选课管理 -->
+                <div v-if="currentPage === 'select'" class="card">
+                    <h2>选课中心</h2>
+                    <el-table :data="courses" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="credits" label="学分"></el-table-column>
+                        <el-table-column prop="hours" label="学时"></el-table-column>
+                        <el-table-column prop="teacherName" label="授课教师"></el-table-column>
+                        <el-table-column prop="capacity" label="容量"></el-table-column>
+                        <el-table-column prop="selectedCount" label="已选人数"></el-table-column>
+                        <el-table-column label="操作" width="120">
+                            <template slot-scope="scope">
+                                <el-button size="mini" type="primary" @click="selectCourse(scope.row)">选课</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentPage: 'dashboard',
+                activeMenu: 'myinfo',
+                currentUser: {},
+                myCourses: [],
+                students: [],
+                courses: []
+            },
+            created() {
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.currentUser = JSON.parse(user);
+                } else {
+                    this.$message.error('未登录，请先登录');
+                    window.location.href = '/index.html';
+                }
+            },
+            methods: {
+                navigateTo(page) {
+                    this.currentPage = page;
+                    this.activeMenu = page;
+                    if (page === 'myinfo') {
+                        // 加载个人信息
+                    } else if (page === 'course') {
+                        this.loadMyCourses();
+                    } else if (page === 'select') {
+                        this.loadSelectableCourses();
+                    }
+                },
+                async loadMyCourses() {
+                    try {
+                        // TODO: 调用后端接口获取我的已选课程
+                        this.myCourses = [
+                            { courseCode: 'CS101', courseName: '程序设计基础', credits: 3.0, hours: 48, teacherName: '李老师', selectStatus: '0' },
+                            { courseCode: 'CS201', courseName: '数据结构', credits: 4.0, hours: 64, teacherName: '李老师', selectStatus: '0' }
+                        ];
+                    } catch (error) {
+                        console.error('加载我的课程失败', error);
+                    }
+                },
+                async loadSelectableCourses() {
+                    try {
+                        const response = await axios.get('/edu/course/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.courses = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载可选课程失败', error);
+                    }
+                },
+                selectCourse(course) {
+                    this.$confirm(`确定要选修${course.courseName}吗？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            // TODO: 调用后端选课接口
+                            // const response = await axios.post('/edu/student/select-course', {
+                            //     courseId: course.courseId
+                            // }, {
+                            //     headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            // });
+                            // if (response.data.code === 200) {
+                            //     this.$message.success('选课成功');
+                            //     this.loadSelectableCourses();
+                            // }
+                            this.$message.success('选课成功（模拟）');
+                        } catch (error) {
+                            this.$message.error('选课失败');
+                        }
+                    }).catch(() => {});
+                },
+                handleLogout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    this.$message.success('已退出登录');
+                    window.location.href = '/index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

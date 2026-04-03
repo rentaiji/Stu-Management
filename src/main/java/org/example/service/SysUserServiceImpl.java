@@ -2,6 +2,7 @@ package org.example.service.impl;
 
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -25,9 +26,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private Long jwtExpiration;
 
     @Override
-    public SysUser getUserByUsername(String username) {
+    public SysUser getUserByUsername(String account) {
+        // 使用用户名（学号/工号）登录
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUserName, username);
+        wrapper.eq(SysUser::getUserName, account);
         return getOne(wrapper);
     }
 
@@ -45,24 +47,35 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public String login(String username, String password) {
-        SysUser user = getUserByUsername(username);
+    public String login(String account, String password) {
+        SysUser user = getUserByUsername(account);
         if (user == null) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new RuntimeException("账号或密码错误");
         }
-        if (!"0".equals(user.getStatus())) {
-            throw new RuntimeException("用户已被禁用");
-        }
-        if (!BCrypt.checkpw(password, user.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+        // 如果是明文密码（兼容旧数据），直接比较并更新为 BCrypt
+        if (user.getPassword() != null && !user.getPassword().startsWith("$2a$")) {
+            if (!password.equals(user.getPassword())) {
+                throw new RuntimeException("账号或密码错误");
+            }
+            // 更新为 BCrypt 加密密码
+            String encodedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+            update().set("password", encodedPassword).eq("user_id", user.getUserId()).update();
+            user.setPassword(encodedPassword);
+        } else {
+            if (!BCrypt.checkpw(password, user.getPassword())) {
+                throw new RuntimeException("账号或密码错误");
+            }
         }
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUserName());
         claims.put("userType", user.getUserType());
+        claims.put("realName", user.getRealName());
+        claims.put("phone", user.getPhone());
+        claims.put("email", user.getEmail());
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(username)
+                .setSubject(account)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(SignatureAlgorithm.HS512, jwtSecret)

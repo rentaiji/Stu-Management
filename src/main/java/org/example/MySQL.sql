@@ -1,178 +1,294 @@
-NEW_FILE_CODE
+-- Student Management Platform Database Script
+-- Version: V1.0
+
 CREATE DATABASE IF NOT EXISTS stu_manage DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE stu_manage;
 
+-- Department Table
 DROP TABLE IF EXISTS sys_department;
 CREATE TABLE sys_department (
-    dept_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '部门 ID',
-    parent_id BIGINT DEFAULT 0 COMMENT '父部门 ID',
-    dept_name VARCHAR(50) NOT NULL COMMENT '部门名称',
-    dept_code VARCHAR(30) NOT NULL COMMENT '部门编码',
-    dept_type TINYINT DEFAULT 0 COMMENT '部门类型',
-    leader_id BIGINT DEFAULT NULL COMMENT '负责人 ID',
-    order_num INT DEFAULT 0 COMMENT '显示顺序',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    update_time DATETIME DEFAULT NULL COMMENT '更新时间',
-    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='部门表';
+    dept_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    parent_id BIGINT DEFAULT 0,
+    dept_name VARCHAR(50) NOT NULL,
+    dept_code VARCHAR(30) NOT NULL,
+    dept_type TINYINT DEFAULT 0,
+    leader_id BIGINT DEFAULT NULL,
+    order_num INT DEFAULT 0,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    update_time DATETIME DEFAULT NULL,
+    remark VARCHAR(500) DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-DROP TABLE IF EXISTS sys_user;
-CREATE TABLE sys_user (
-    user_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户 ID',
-    user_name VARCHAR(30) NOT NULL COMMENT '用户名',
-    real_name VARCHAR(30) DEFAULT NULL COMMENT '真实姓名',
-    password VARCHAR(100) NOT NULL COMMENT '密码',
-    user_type CHAR(1) DEFAULT '0' COMMENT '用户类型',
-    email VARCHAR(50) DEFAULT NULL COMMENT '邮箱',
-    phone VARCHAR(11) DEFAULT NULL COMMENT '手机号',
-    gender CHAR(1) DEFAULT '0' COMMENT '性别',
-    avatar VARCHAR(200) DEFAULT NULL COMMENT '头像路径',
-    dept_id BIGINT DEFAULT NULL COMMENT '所属部门',
-    login_ip VARCHAR(50) DEFAULT NULL COMMENT '最后登录 IP',
-    login_date DATETIME DEFAULT NULL COMMENT '最后登录时间',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    update_time DATETIME DEFAULT NULL COMMENT '更新时间',
-    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志',
-    UNIQUE KEY uk_username (user_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+-- Major Table
+DROP TABLE IF EXISTS edu_major;
+CREATE TABLE edu_major (
+    major_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    major_name VARCHAR(50) NOT NULL,
+    major_code VARCHAR(20) NOT NULL,
+    dept_id BIGINT NOT NULL,
+    degree_type TINYINT DEFAULT 0,
+    study_length YEAR DEFAULT 4,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-DROP TABLE IF EXISTS sys_role;
-CREATE TABLE sys_role (
-    role_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '角色 ID',
-    role_name VARCHAR(30) NOT NULL COMMENT '角色名称',
-    role_key VARCHAR(30) NOT NULL COMMENT '角色权限字符',
-    role_sort INT NOT NULL COMMENT '角色顺序',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
-
-DROP TABLE IF EXISTS sys_user_role;
-CREATE TABLE sys_user_role (
-    user_id BIGINT NOT NULL COMMENT '用户 ID',
-    role_id BIGINT NOT NULL COMMENT '角色 ID',
-    PRIMARY KEY (user_id, role_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联表';
-
+-- Grade Table
 DROP TABLE IF EXISTS edu_grade;
 CREATE TABLE edu_grade (
-    grade_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '年级 ID',
-    grade_name VARCHAR(20) NOT NULL COMMENT '年级名称',
-    grade_code VARCHAR(10) NOT NULL COMMENT '年级编码',
-    entrance_year INT NOT NULL COMMENT '入学年份',
-    is_current CHAR(1) DEFAULT '0' COMMENT '是否当前年级',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='年级表';
+    grade_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    grade_name VARCHAR(20) NOT NULL,
+    grade_code VARCHAR(10) NOT NULL,
+    entrance_year INT NOT NULL,
+    is_current CHAR(1) DEFAULT '0',
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Class Table
 DROP TABLE IF EXISTS edu_class;
 CREATE TABLE edu_class (
-    class_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '班级 ID',
-    class_name VARCHAR(50) NOT NULL COMMENT '班级名称',
-    class_code VARCHAR(20) NOT NULL COMMENT '班级编码',
-    grade_id BIGINT NOT NULL COMMENT '所属年级 ID',
-    head_teacher_id BIGINT DEFAULT NULL COMMENT '班主任 ID',
-    student_count INT DEFAULT 0 COMMENT '学生人数',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='班级表';
+    class_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    class_name VARCHAR(50) NOT NULL,
+    class_code VARCHAR(20) NOT NULL,
+    grade_id BIGINT NOT NULL,
+    major_id BIGINT DEFAULT NULL,
+    head_teacher_id BIGINT DEFAULT NULL,
+    student_count INT DEFAULT 0,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- User Table
+DROP TABLE IF EXISTS sys_user;
+CREATE TABLE sys_user (
+    user_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_name VARCHAR(30) NOT NULL UNIQUE,
+    real_name VARCHAR(30) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    user_type CHAR(1) NOT NULL DEFAULT '0',
+    email VARCHAR(50) DEFAULT NULL,
+    phone VARCHAR(20) DEFAULT NULL,
+    gender CHAR(1) DEFAULT '0',
+    avatar VARCHAR(200) DEFAULT NULL,
+    dept_id BIGINT DEFAULT NULL,
+    status CHAR(1) DEFAULT '0',
+    login_ip VARCHAR(50) DEFAULT NULL,
+    login_date DATETIME DEFAULT NULL,
+    create_time DATETIME DEFAULT NULL,
+    update_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0,
+    INDEX idx_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Student Table
+DROP TABLE IF EXISTS edu_student;
+CREATE TABLE edu_student (
+    student_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL UNIQUE,
+    student_no VARCHAR(20) NOT NULL UNIQUE,
+    grade_id BIGINT NOT NULL,
+    class_id BIGINT DEFAULT NULL,
+    major_id BIGINT DEFAULT NULL,
+    enrollment_year INT NOT NULL,
+    study_mode TINYINT DEFAULT 0,
+    student_status TINYINT DEFAULT 0,
+    id_card VARCHAR(18) DEFAULT NULL,
+    birth_date DATE DEFAULT NULL,
+    birth_place VARCHAR(100) DEFAULT NULL,
+    native_place VARCHAR(100) DEFAULT NULL,
+    nation VARCHAR(20) DEFAULT 'Han',
+    political_status TINYINT DEFAULT 0,
+    entry_date DATE DEFAULT NULL,
+    graduate_date DATE DEFAULT NULL,
+    create_time DATETIME DEFAULT NULL,
+    update_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0,
+    INDEX idx_grade (grade_id),
+    INDEX idx_class (class_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Teacher Table
+DROP TABLE IF EXISTS edu_teacher;
+CREATE TABLE edu_teacher (
+    teacher_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL UNIQUE,
+    teacher_no VARCHAR(20) NOT NULL UNIQUE,
+    dept_id BIGINT NOT NULL,
+    title TINYINT DEFAULT 0,
+    degree TINYINT DEFAULT 0,
+    research_direction VARCHAR(200) DEFAULT NULL,
+    first_hire_date DATE DEFAULT NULL,
+    regular_date DATE DEFAULT NULL,
+    hire_level VARCHAR(50) DEFAULT NULL,
+    special_level VARCHAR(50) DEFAULT NULL,
+    special_contract_date DATE DEFAULT NULL,
+    special_contract_file VARCHAR(500) DEFAULT NULL,
+    education_certificates TEXT DEFAULT NULL,
+    entry_date DATE DEFAULT NULL,
+    create_time DATETIME DEFAULT NULL,
+    update_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0,
+    INDEX idx_dept (dept_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Role Table
+DROP TABLE IF EXISTS sys_role;
+CREATE TABLE sys_role (
+    role_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    role_name VARCHAR(30) NOT NULL,
+    role_key VARCHAR(30) NOT NULL,
+    role_sort INT NOT NULL,
+    status CHAR(1) DEFAULT '0',
+    remark VARCHAR(500) DEFAULT NULL,
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- User Role Table
+DROP TABLE IF EXISTS sys_user_role;
+CREATE TABLE sys_user_role (
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (user_id, role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Course Table
 DROP TABLE IF EXISTS edu_course;
 CREATE TABLE edu_course (
-    course_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '课程 ID',
-    course_code VARCHAR(20) NOT NULL COMMENT '课程代码',
-    course_name VARCHAR(100) NOT NULL COMMENT '课程名称',
-    credits DECIMAL(3,1) NOT NULL COMMENT '学分',
-    hours INT NOT NULL COMMENT '学时',
-    course_type CHAR(1) DEFAULT '0' COMMENT '课程类型',
-    teacher_id BIGINT DEFAULT NULL COMMENT '主讲教师',
-    capacity INT DEFAULT 0 COMMENT '容量',
-    selected_count INT DEFAULT 0 COMMENT '已选人数',
-    description TEXT DEFAULT NULL COMMENT '课程描述',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';
+    course_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    course_code VARCHAR(20) NOT NULL,
+    course_name VARCHAR(100) NOT NULL,
+    credits DECIMAL(3,1) NOT NULL,
+    hours INT NOT NULL,
+    course_type CHAR(1) DEFAULT '0',
+    teacher_id BIGINT DEFAULT NULL,
+    capacity INT DEFAULT 0,
+    selected_count INT DEFAULT 0,
+    description TEXT DEFAULT NULL,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Semester Table
 DROP TABLE IF EXISTS edu_semester;
 CREATE TABLE edu_semester (
-    semester_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '学期 ID',
-    semester_name VARCHAR(50) NOT NULL COMMENT '学期名称',
-    semester_code VARCHAR(20) NOT NULL COMMENT '学期编码',
-    start_date DATE NOT NULL COMMENT '开始日期',
-    end_date DATE NOT NULL COMMENT '结束日期',
-    is_current CHAR(1) DEFAULT '0' COMMENT '是否当前学期',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学期表';
+    semester_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    semester_name VARCHAR(50) NOT NULL,
+    semester_code VARCHAR(20) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_current CHAR(1) DEFAULT '0',
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Student Course Table
 DROP TABLE IF EXISTS edu_student_course;
 CREATE TABLE edu_student_course (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键 ID',
-    student_id BIGINT NOT NULL COMMENT '学生 ID',
-    course_id BIGINT NOT NULL COMMENT '课程 ID',
-    semester_id BIGINT NOT NULL COMMENT '学期 ID',
-    select_time DATETIME NOT NULL COMMENT '选课时间',
-    select_status CHAR(1) DEFAULT '0' COMMENT '选课状态',
-    audit_status CHAR(1) DEFAULT '0' COMMENT '审核状态',
-    audit_by BIGINT DEFAULT NULL COMMENT '审核人',
-    audit_time DATETIME DEFAULT NULL COMMENT '审核时间',
-    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生选课表';
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    student_id BIGINT NOT NULL,
+    course_id BIGINT NOT NULL,
+    semester_id BIGINT NOT NULL,
+    select_time DATETIME NOT NULL,
+    select_status CHAR(1) DEFAULT '0',
+    audit_status CHAR(1) DEFAULT '0',
+    audit_by BIGINT DEFAULT NULL,
+    audit_time DATETIME DEFAULT NULL,
+    remark VARCHAR(500) DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Score Table
 DROP TABLE IF EXISTS edu_score;
 CREATE TABLE edu_score (
-    score_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '成绩 ID',
-    student_id BIGINT NOT NULL COMMENT '学生 ID',
-    course_id BIGINT NOT NULL COMMENT '课程 ID',
-    semester_id BIGINT NOT NULL COMMENT '学期 ID',
-    regular_score DECIMAL(5,2) DEFAULT NULL COMMENT '平时成绩',
-    final_score DECIMAL(5,2) DEFAULT NULL COMMENT '期末成绩',
-    total_score DECIMAL(5,2) NOT NULL COMMENT '总成绩',
-    grade_point DECIMAL(4,2) DEFAULT NULL COMMENT '绩点',
-    grade_level VARCHAR(10) DEFAULT NULL COMMENT '成绩等级',
-    credit_earned DECIMAL(3,1) DEFAULT NULL COMMENT '获得学分',
-    input_by BIGINT NOT NULL COMMENT '录入人',
-    input_time DATETIME NOT NULL COMMENT '录入时间',
-    status CHAR(1) DEFAULT '0' COMMENT '状态',
-    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
-    deleted TINYINT DEFAULT 0 COMMENT '删除标志'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成绩表';
+    score_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    student_id BIGINT NOT NULL,
+    course_id BIGINT NOT NULL,
+    semester_id BIGINT NOT NULL,
+    regular_score DECIMAL(5,2) DEFAULT NULL,
+    final_score DECIMAL(5,2) DEFAULT NULL,
+    total_score DECIMAL(5,2) NOT NULL,
+    grade_point DECIMAL(4,2) DEFAULT NULL,
+    grade_level VARCHAR(10) DEFAULT NULL,
+    credit_earned DECIMAL(3,1) DEFAULT NULL,
+    input_by BIGINT NOT NULL,
+    input_time DATETIME NOT NULL,
+    status CHAR(1) DEFAULT '0',
+    remark VARCHAR(500) DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Teacher Research Table
+DROP TABLE IF EXISTS edu_teacher_research;
+CREATE TABLE edu_teacher_research (
+    research_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    teacher_id BIGINT NOT NULL,
+    research_type TINYINT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    level TINYINT DEFAULT 0,
+    award_date DATE DEFAULT NULL,
+    ranking INT DEFAULT NULL,
+    remark TEXT DEFAULT NULL,
+    attachment_url VARCHAR(500) DEFAULT NULL,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Teacher Family Table
+DROP TABLE IF EXISTS edu_teacher_family;
+CREATE TABLE edu_teacher_family (
+    family_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    teacher_id BIGINT NOT NULL,
+    member_name VARCHAR(50) NOT NULL,
+    relation TINYINT DEFAULT 0,
+    birth_date DATE DEFAULT NULL,
+    school_name VARCHAR(100) DEFAULT NULL,
+    grade_class VARCHAR(50) DEFAULT NULL,
+    status CHAR(1) DEFAULT '0',
+    create_time DATETIME DEFAULT NULL,
+    deleted TINYINT DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Init Data
 INSERT INTO sys_department (dept_name, dept_code, dept_type, status) VALUES 
-('清华大学', 'THU', 0, '0'),
-('计算机学院', 'CS', 1, '0');
+('Computer Science', 'CS', 1, '0'),
+('Software Engineering', 'SE', 1, '0');
 
 INSERT INTO sys_user (user_name, real_name, password, user_type, dept_id, status) VALUES 
-('admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
-('teacher001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
-('stu001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
+('admin', 'Admin', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
+('T001', 'Li Teacher', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 1, '0'),
+('2024001', 'Zhang San', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 1, '0');
+
+INSERT INTO edu_teacher (user_id, teacher_no, dept_id, title, degree) VALUES 
+(2, 'T001', 1, 1, 2);
+
+INSERT INTO edu_student (user_id, student_no, grade_id, enrollment_year, nation, political_status) VALUES 
+(3, '2024001', 1, 2024, 'Han', 1);
 
 INSERT INTO sys_role (role_name, role_key, role_sort, status) VALUES 
-('学生', 'student', 1, '0'),
-('教师', 'teacher', 2, '0'),
-('管理员', 'admin', 3, '0');
+('Student', 'student', 1, '0'),
+('Teacher', 'teacher', 2, '0'),
+('Admin', 'admin', 3, '0');
 
 INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 3), (2, 2), (3, 1);
 
 INSERT INTO edu_grade (grade_name, grade_code, entrance_year, is_current, status) VALUES 
-('2024 级', '2024', 2024, '1', '0');
+('Grade 2024', '2024', 2024, '1', '0');
 
 INSERT INTO edu_class (class_name, class_code, grade_id, student_count, status) VALUES 
-('计算机 2024 级 1 班', 'CS202401', 1, 45, '0');
+('Class CS202401', 'CS202401', 1, 45, '0');
 
 INSERT INTO edu_course (course_code, course_name, credits, hours, course_type, teacher_id, capacity) VALUES 
-('CS101', '程序设计基础', 3.0, 48, '0', 2, 100),
-('CS201', '数据结构', 4.0, 64, '0', 2, 80);
+('CS101', 'Programming Basics', 3.0, 48, '0', 2, 100),
+('CS201', 'Data Structures', 4.0, 64, '0', 2, 80);
 
 INSERT INTO edu_semester (semester_name, semester_code, start_date, end_date, is_current, status) VALUES 
-('2025-2026 秋季学期', '2025F', '2025-09-01', '2026-01-20', '1', '0');
+('2025-2026 Fall', '2025F', '2025-09-01', '2026-01-20', '1', '0');
