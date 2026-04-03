@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页 - 学生综合服务与教学协同平台</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { cursor: pointer; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .sidebar { width: 200px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>学生综合服务与教学协同平台</h1>
+            <div class="user-info">
+                <span>欢迎，{{ currentUser.realName || currentUser.userName }}</span>
+                <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="sidebar">
+                <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
+                    <el-menu-item index="dashboard">
+                        <i class="el-icon-s-home"></i>
+                        <span>首页</span>
+                    </el-menu-item>
+                    <el-menu-item index="student">
+                        <i class="el-icon-user"></i>
+                        <span>学生管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="course">
+                        <i class="el-icon-reading"></i>
+                        <span>课程管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="score">
+                        <i class="el-icon-edit"></i>
+                        <span>成绩管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="class">
+                        <i class="el-icon-s-cooperation"></i>
+                        <span>班级管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="select">
+                        <i class="el-icon-circle-check"></i>
+                        <span>选课管理</span>
+                    </el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <!-- 首页 -->
+                <div v-if="currentPage === 'dashboard'" class="card">
+                    <h2>欢迎使用系统</h2>
+                    <p>请选择左侧菜单进行操作</p>
+                </div>
+                
+                <!-- 学生管理 -->
+                <div v-if="currentPage === 'student'" class="card">
+                    <h2>学生管理</h2>
+                    <el-table :data="students" style="width: 100%">
+                        <el-table-column prop="studentNo" label="学号"></el-table-column>
+                        <el-table-column prop="userName" label="姓名"></el-table-column>
+                        <el-table-column prop="major" label="专业"></el-table-column>
+                        <el-table-column prop="enrollmentYear" label="入学年份"></el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 课程管理 -->
+                <div v-if="currentPage === 'course'" class="card">
+                    <h2>课程管理</h2>
+                    <el-table :data="courses" style="width: 100%">
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="credits" label="学分"></el-table-column>
+                        <el-table-column prop="hours" label="学时"></el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 成绩管理 -->
+                <div v-if="currentPage === 'score'" class="card">
+                    <h2>成绩管理</h2>
+                    <p>暂无数据</p>
+                </div>
+
+                <!-- 班级管理 -->
+                <div v-if="currentPage === 'class'" class="card">
+                    <h2>班级管理</h2>
+                    <p>暂无数据</p>
+                </div>
+
+                <!-- 选课管理 -->
+                <div v-if="currentPage === 'select'" class="card">
+                    <h2>选课管理</h2>
+                    <p>暂无数据</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentPage: 'dashboard',
+                activeMenu: 'dashboard',
+                currentUser: {},
+                students: [],
+                courses: []
+            },
+            created() {
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.currentUser = JSON.parse(user);
+                } else {
+                    this.$message.error('未登录，请先登录');
+                    window.location.href = '/index.html';
+                }
+            },
+            methods: {
+                navigateTo(page) {
+                    this.currentPage = page;
+                    this.activeMenu = page;
+                    if (page === 'student') {
+                        this.loadStudents();
+                    } else if (page === 'course') {
+                        this.loadCourses();
+                    }
+                },
+                async loadStudents() {
+                    try {
+                        const response = await axios.get('/edu/student/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.students = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载学生列表失败', error);
+                    }
+                },
+                async loadCourses() {
+                    try {
+                        const response = await axios.get('/edu/course/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.courses = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载课程列表失败', error);
+                    }
+                },
+                handleLogout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    this.$message.success('已退出登录');
+                    window.location.href = '/index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

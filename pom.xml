@@ -23,7 +23,7 @@
         <druid.version>1.2.20</druid.version>
         <jwt.version>0.9.1</jwt.version>
         <hutool.version>5.8.22</hutool.version>
-        <lombok.version>1.18.24</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
 
     <dependencies>
