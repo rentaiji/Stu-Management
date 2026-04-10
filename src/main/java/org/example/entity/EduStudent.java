@@ -20,6 +20,9 @@ public class EduStudent implements Serializable {
     @TableField("student_no")
     private String studentNo;
 
+    @TableField(exist = false)
+    private String realName; // 从 sys_user 关联查询
+
     @TableField("birth_date")
     private LocalDate birthDate;
 

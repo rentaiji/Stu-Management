@@ -41,10 +41,10 @@ public class EduScore implements Serializable {
     @TableField("credit_earned")
     private BigDecimal creditEarned;
 
-    @TableField("input_by")
+    @TableField(value = "input_by", fill = FieldFill.INSERT)
     private Long inputBy;
 
-    @TableField("input_time")
+    @TableField(value = "input_time", fill = FieldFill.INSERT)
     private LocalDateTime inputTime;
 
     @TableField("status")

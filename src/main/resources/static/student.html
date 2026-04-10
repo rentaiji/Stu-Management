@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>主页 - 学生综合服务与教学协同平台</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
@@ -50,6 +50,10 @@
                         <i class="el-icon-circle-check"></i>
                         <span>选课中心</span>
                     </el-menu-item>
+                    <el-menu-item index="competition">
+                        <i class="el-icon-trophy"></i>
+                        <span>竞赛申报</span>
+                    </el-menu-item>
                 </el-menu>
             </div>
             <div class="main-content">
@@ -88,21 +92,41 @@
                     </el-table>
                 </div>
 
-                <!-- 成绩管理 -->
+                <!-- 我的成绩 -->
                 <div v-if="currentPage === 'score'" class="card">
-                    <h2>成绩管理</h2>
-                    <p>暂无数据</p>
+                    <h2>我的成绩</h2>
+                    <el-table :data="myScores" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="semesterName" label="学期"></el-table-column>
+                        <el-table-column prop="regularScore" label="平时成绩"></el-table-column>
+                        <el-table-column prop="finalScore" label="期末成绩"></el-table-column>
+                        <el-table-column prop="totalScore" label="总评成绩">
+                            <template slot-scope="scope">
+                                <strong>{{ scope.row.totalScore }}</strong>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="gradePoint" label="绩点"></el-table-column>
+                        <el-table-column prop="gradeLevel" label="等级">
+                            <template slot-scope="scope">
+                                <el-tag :type="getGradeTag(scope.row.gradeLevel)">{{ scope.row.gradeLevel }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="status" label="状态">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.status === '2'">已发布</span>
+                                <span v-else>未发布</span>
+                            </template>
+                        </el-table-column>
+                    </el-table>
                 </div>
 
-                <!-- 班级管理 -->
-                <div v-if="currentPage === 'class'" class="card">
-                    <h2>班级管理</h2>
-                    <p>暂无数据</p>
-                </div>
-
-                <!-- 选课管理 -->
+                <!-- 选课中心 -->
                 <div v-if="currentPage === 'select'" class="card">
                     <h2>选课中心</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-alert title="选课规则：每学期最多选修28学分" type="info" :closable="false"></el-alert>
+                    </div>
                     <el-table :data="courses" style="width: 100%; margin-top: 10px;">
                         <el-table-column prop="courseCode" label="课程代码"></el-table-column>
                         <el-table-column prop="courseName" label="课程名称"></el-table-column>
@@ -110,21 +134,102 @@
                         <el-table-column prop="hours" label="学时"></el-table-column>
                         <el-table-column prop="teacherName" label="授课教师"></el-table-column>
                         <el-table-column prop="capacity" label="容量"></el-table-column>
-                        <el-table-column prop="selectedCount" label="已选人数"></el-table-column>
+                        <el-table-column prop="selectedCount" label="已选人数">
+                            <template slot-scope="scope">
+                                {{ scope.row.selectedCount || 0 }}/{{ scope.row.capacity }}
+                            </template>
+                        </el-table-column>
                         <el-table-column label="操作" width="120">
                             <template slot-scope="scope">
-                                <el-button size="mini" type="primary" @click="selectCourse(scope.row)">选课</el-button>
+                                <el-button size="mini" type="primary" @click="selectCourse(scope.row)" :disabled="isCourseSelected(scope.row.courseId)">{{ isCourseSelected(scope.row.courseId) ? '已选' : '选课' }}</el-button>
                             </template>
                         </el-table-column>
                     </el-table>
+                </div>
+
+                <!-- 竞赛申报 -->
+                <div v-if="currentPage === 'competition'" class="card">
+                    <h2>竞赛申报</h2>
+                    <el-button type="primary" @click="showCompetitionDialog()" style="margin-bottom: 10px;">新增申报</el-button>
+                    <el-table :data="competitions" style="width: 100%;">
+                        <el-table-column prop="competitionName" label="竞赛名称"></el-table-column>
+                        <el-table-column prop="competitionType" label="类型">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.competitionType === '0'">学科竞赛</span>
+                                <span v-else-if="scope.row.competitionType === '1'">创新创业</span>
+                                <span v-else-if="scope.row.competitionType === '2'">体育竞技</span>
+                                <span v-else>文艺比赛</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="level" label="级别">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.level === '0'">国家级</span>
+                                <span v-else-if="scope.row.level === '1'">省级</span>
+                                <span v-else>校级</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="awardLevel" label="获奖等级">
+                            <template slot-scope="scope">
+                                <span v-if="!scope.row.awardLevel">待评定</span>
+                                <span v-else-if="scope.row.awardLevel === '0'">一等奖</span>
+                                <span v-else-if="scope.row.awardLevel === '1'">二等奖</span>
+                                <span v-else-if="scope.row.awardLevel === '2'">三等奖</span>
+                                <span v-else>优秀奖</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="status" label="状态">
+                            <template slot-scope="scope">
+                                <el-tag :type="getCompetitionStatusTag(scope.row.status)">{{ getCompetitionStatusText(scope.row.status) }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="editCompetition(scope.row)" v-if="scope.row.status === '0'">编辑</el-button>
+                                <el-button size="mini" type="danger" @click="deleteCompetition(scope.row.competitionId)" v-if="scope.row.status === '0'">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    
+                    <el-dialog title="竞赛申报" :visible.sync="competitionDialogVisible" width="600px">
+                        <el-form :model="competitionForm" label-width="100px">
+                            <el-form-item label="竞赛名称" required>
+                                <el-input v-model="competitionForm.competitionName"></el-input>
+                            </el-form-item>
+                            <el-form-item label="竞赛类型" required>
+                                <el-select v-model="competitionForm.competitionType" placeholder="请选择" style="width: 100%;">
+                                    <el-option label="学科竞赛" value="0"></el-option>
+                                    <el-option label="创新创业" value="1"></el-option>
+                                    <el-option label="体育竞技" value="2"></el-option>
+                                    <el-option label="文艺比赛" value="3"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="级别" required>
+                                <el-select v-model="competitionForm.level" placeholder="请选择" style="width: 100%;">
+                                    <el-option label="国家级" value="0"></el-option>
+                                    <el-option label="省级" value="1"></el-option>
+                                    <el-option label="校级" value="2"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="团队成员">
+                                <el-input type="textarea" v-model="competitionForm.teamMembers" placeholder="多个成员用逗号分隔"></el-input>
+                            </el-form-item>
+                            <el-form-item label="竞赛描述">
+                                <el-input type="textarea" v-model="competitionForm.description"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <span slot="footer">
+                            <el-button @click="competitionDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="saveCompetition">提交申报</el-button>
+                        </span>
+                    </el-dialog>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
-    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
     <script>
         new Vue({
             el: '#app',
@@ -133,8 +238,11 @@
                 activeMenu: 'myinfo',
                 currentUser: {},
                 myCourses: [],
-                students: [],
-                courses: []
+                myScores: [],
+                courses: [],
+                competitions: [],
+                competitionDialogVisible: false,
+                competitionForm: { competitionName: '', competitionType: '0', level: '0', teamMembers: '', description: '' }
             },
             created() {
                 const user = localStorage.getItem('user');
@@ -149,12 +257,14 @@
                 navigateTo(page) {
                     this.currentPage = page;
                     this.activeMenu = page;
-                    if (page === 'myinfo') {
-                        // 加载个人信息
-                    } else if (page === 'course') {
+                    if (page === 'course') {
                         this.loadMyCourses();
+                    } else if (page === 'score') {
+                        this.loadMyScores();
                     } else if (page === 'select') {
                         this.loadSelectableCourses();
+                    } else if (page === 'competition') {
+                        this.loadCompetitions();
                     }
                 },
                 async loadMyCourses() {
@@ -180,6 +290,9 @@
                         console.error('加载可选课程失败', error);
                     }
                 },
+                isCourseSelected(courseId) {
+                    return this.myCourses.some(c => c.courseId === courseId && c.selectStatus === '0');
+                },
                 selectCourse(course) {
                     this.$confirm(`确定要选修${course.courseName}吗？`, '提示', {
                         confirmButtonText: '确定',
@@ -188,20 +301,106 @@
                     }).then(async () => {
                         try {
                             // TODO: 调用后端选课接口
-                            // const response = await axios.post('/edu/student/select-course', {
-                            //     courseId: course.courseId
-                            // }, {
-                            //     headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-                            // });
-                            // if (response.data.code === 200) {
-                            //     this.$message.success('选课成功');
-                            //     this.loadSelectableCourses();
-                            // }
                             this.$message.success('选课成功（模拟）');
+                            // 更新本地数据
+                            course.selectedCount = (course.selectedCount || 0) + 1;
+                            this.loadMyCourses();
                         } catch (error) {
                             this.$message.error('选课失败');
                         }
                     }).catch(() => {});
+                },
+                async loadMyScores() {
+                    try {
+                        // TODO: 调用后端接口获取我的成绩
+                        this.myScores = [
+                            { courseCode: 'CS101', courseName: '程序设计基础', semesterName: '2025-2026秋季', regularScore: 85, finalScore: 90, totalScore: 88.5, gradePoint: 3.7, gradeLevel: '优秀', status: '2' }
+                        ];
+                    } catch (error) {
+                        console.error('加载成绩失败', error);
+                    }
+                },
+                getGradeTag(gradeLevel) {
+                    const map = { '优秀': 'success', '良好': '', '中等': 'warning', '及格': 'info', '不及格': 'danger' };
+                    return map[gradeLevel] || '';
+                },
+                showCompetitionDialog() {
+                    this.competitionForm = { competitionName: '', competitionType: '0', level: '0', teamMembers: '', description: '' };
+                    this.competitionDialogVisible = true;
+                },
+                editCompetition(row) {
+                    this.competitionForm = JSON.parse(JSON.stringify(row));
+                    this.competitionDialogVisible = true;
+                },
+                async saveCompetition() {
+                    if (!this.competitionForm.competitionName) {
+                        this.$message.error('请输入竞赛名称');
+                        return;
+                    }
+                    try {
+                        const data = { ...this.competitionForm, studentId: this.currentUser.userId };
+                        let response;
+                        // 判断是新增还是编辑
+                        if (this.competitionForm.competitionId) {
+                            response = await axios.put('/edu/competition', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        } else {
+                            response = await axios.post('/edu/competition', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        }
+                        if (response.data.code === 200) {
+                            this.$message.success(this.competitionForm.competitionId ? '修改成功' : '申报成功');
+                            this.competitionDialogVisible = false;
+                            this.loadCompetitions();
+                        } else {
+                            this.$message.error(response.data.message || '操作失败');
+                        }
+                    } catch (error) {
+                        console.error('操作错误:', error);
+                        this.$message.error(error.response?.data?.message || '操作失败');
+                    }
+                },
+                async loadCompetitions() {
+                    try {
+                        const response = await axios.get('/edu/competition/list', {
+                            params: { studentId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.competitions = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载竞赛列表失败', error);
+                    }
+                },
+                deleteCompetition(competitionId) {
+                    this.$confirm('确定要删除该申报吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.delete(`/edu/competition/${competitionId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('删除成功');
+                                this.loadCompetitions();
+                            }
+                        } catch (error) {
+                            this.$message.error('删除失败');
+                        }
+                    }).catch(() => {});
+                },
+                getCompetitionStatusTag(status) {
+                    const map = { '0': 'warning', '1': 'success', '2': 'danger' };
+                    return map[status] || '';
+                },
+                getCompetitionStatusText(status) {
+                    const map = { '0': '待审核', '1': '已通过', '2': '已驳回' };
+                    return map[status] || '未知';
                 },
                 handleLogout() {
                     localStorage.removeItem('token');

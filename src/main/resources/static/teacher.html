@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教师工作台 - 学生综合服务与教学协同平台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { cursor: pointer; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .sidebar { width: 200px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .stat-card { display: inline-block; width: 200px; margin: 10px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .stat-card h3 { font-size: 32px; margin-bottom: 5px; }
+        .stat-card p { font-size: 14px; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>教师工作台</h1>
+            <div class="user-info">
+                <span>欢迎，{{ currentUser.realName || currentUser.userName }}</span>
+                <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="sidebar">
+                <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
+                    <el-menu-item index="dashboard">
+                        <i class="el-icon-s-home"></i>
+                        <span>首页</span>
+                    </el-menu-item>
+                    <el-menu-item index="mycourse">
+                        <i class="el-icon-reading"></i>
+                        <span>我的课程</span>
+                    </el-menu-item>
+                    <el-menu-item index="score">
+                        <i class="el-icon-edit"></i>
+                        <span>成绩管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="student">
+                        <i class="el-icon-user"></i>
+                        <span>学生名单</span>
+                    </el-menu-item>
+                    <el-menu-item index="research">
+                        <i class="el-icon-document"></i>
+                        <span>科研管理</span>
+                    </el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <!-- 首页 -->
+                <div v-if="currentPage === 'dashboard'" class="card">
+                    <h2>工作台概览</h2>
+                    <div style="margin-top: 20px;">
+                        <div class="stat-card">
+                            <h3>{{ myCourses.length }}</h3>
+                            <p>授课门数</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{ totalStudents }}</h3>
+                            <p>学生总数</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>{{ pendingScores }}</h3>
+                            <p>待录入成绩</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 我的课程 -->
+                <div v-if="currentPage === 'mycourse'" class="card">
+                    <h2>我的课程</h2>
+                    <el-table :data="myCourses" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="credits" label="学分"></el-table-column>
+                        <el-table-column prop="hours" label="学时"></el-table-column>
+                        <el-table-column prop="capacity" label="容量"></el-table-column>
+                        <el-table-column prop="selectedCount" label="已选人数"></el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="viewCourseStudents(scope.row)">查看学生</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 成绩管理 -->
+                <div v-if="currentPage === 'score'" class="card">
+                    <h2>成绩管理</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-select v-model="scoreCourseId" placeholder="选择课程" style="width: 200px; margin-right: 10px;" @change="loadScores">
+                            <el-option v-for="course in myCourses" :key="course.courseId" :label="course.courseName" :value="course.courseId"></el-option>
+                        </el-select>
+                        <el-button type="primary" @click="loadScores">查询</el-button>
+                        <el-button type="success" @click="showScoreInputDialog" style="float: right;">批量录入成绩</el-button>
+                    </div>
+                    <el-table :data="scores" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="studentNo" label="学号"></el-table-column>
+                        <el-table-column prop="studentName" label="姓名"></el-table-column>
+                        <el-table-column prop="usualScore" label="平时成绩" width="100">
+                            <template slot-scope="scope">
+                                <el-input-number v-model="scope.row.usualScore" :min="0" :max="100" size="mini" v-if="!scope.row.locked"></el-input-number>
+                                <span v-else>{{ scope.row.usualScore }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="midtermScore" label="期中成绩" width="100">
+                            <template slot-scope="scope">
+                                <el-input-number v-model="scope.row.midtermScore" :min="0" :max="100" size="mini" v-if="!scope.row.locked"></el-input-number>
+                                <span v-else>{{ scope.row.midtermScore }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="finalScore" label="期末成绩" width="100">
+                            <template slot-scope="scope">
+                                <el-input-number v-model="scope.row.finalScore" :min="0" :max="100" size="mini" v-if="!scope.row.locked"></el-input-number>
+                                <span v-else>{{ scope.row.finalScore }}</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="totalScore" label="总评成绩" width="100">
+                            <template slot-scope="scope">
+                                {{ calculateTotal(scope.row) }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="status" label="状态" width="100">
+                            <template slot-scope="scope">
+                                <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="saveSingleScore(scope.row)" v-if="!scope.row.locked">保存</el-button>
+                                <el-button size="mini" type="warning" @click="submitScoreForReview(scope.row.courseId)" v-if="!scope.row.locked">提交审核</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    
+                    <el-dialog title="批量录入成绩" :visible.sync="scoreInputVisible" width="60%">
+                        <el-alert title="成绩构成：平时30% + 期中20% + 期末50%" type="info" :closable="false" style="margin-bottom: 15px;"></el-alert>
+                        <el-table :data="scoreInputList" max-height="400">
+                            <el-table-column prop="studentNo" label="学号" width="120"></el-table-column>
+                            <el-table-column prop="studentName" label="姓名" width="100"></el-table-column>
+                            <el-table-column label="平时成绩" width="120">
+                                <template slot-scope="scope">
+                                    <el-input-number v-model="scope.row.usualScore" :min="0" :max="100" size="mini"></el-input-number>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="期中成绩" width="120">
+                                <template slot-scope="scope">
+                                    <el-input-number v-model="scope.row.midtermScore" :min="0" :max="100" size="mini"></el-input-number>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="期末成绩" width="120">
+                                <template slot-scope="scope">
+                                    <el-input-number v-model="scope.row.finalScore" :min="0" :max="100" size="mini"></el-input-number>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="总评">
+                                <template slot-scope="scope">
+                                    {{ calculateTotal(scope.row) }}
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <span slot="footer">
+                            <el-button @click="scoreInputVisible = false">取消</el-button>
+                            <el-button type="primary" @click="batchSaveScores">批量保存</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+
+                <!-- 学生名单 -->
+                <div v-if="currentPage === 'student'" class="card">
+                    <h2>学生名单</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-select v-model="studentCourseId" placeholder="选择课程" style="width: 200px; margin-right: 10px;" @change="loadCourseStudents">
+                            <el-option v-for="course in myCourses" :key="course.courseId" :label="course.courseName" :value="course.courseId"></el-option>
+                        </el-select>
+                        <el-button type="primary" @click="loadCourseStudents">查询</el-button>
+                        <el-button type="success" @click="exportStudentList" style="float: right;">导出名单</el-button>
+                    </div>
+                    <el-table :data="courseStudents" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="studentNo" label="学号"></el-table-column>
+                        <el-table-column prop="studentName" label="姓名"></el-table-column>
+                        <el-table-column prop="className" label="班级"></el-table-column>
+                        <el-table-column prop="phone" label="手机号"></el-table-column>
+                        <el-table-column prop="email" label="邮箱"></el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 科研管理 -->
+                <div v-if="currentPage === 'research'" class="card">
+                    <h2>科研管理</h2>
+                    <el-button type="primary" @click="showResearchDialog()" style="margin-bottom: 10px;">新增科研成果</el-button>
+                    <el-table :data="researchList" style="width: 100%;">
+                        <el-table-column prop="title" label="成果名称"></el-table-column>
+                        <el-table-column prop="researchType" label="类型">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.researchType === 0">项目</span>
+                                <span v-else-if="scope.row.researchType === 1">论文</span>
+                                <span v-else-if="scope.row.researchType === 2">专利</span>
+                                <span v-else>获奖</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="level" label="级别">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.level === 0">国家级</span>
+                                <span v-else-if="scope.row.level === 1">省部级</span>
+                                <span v-else>其他</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="awardDate" label="时间"></el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="editResearch(scope.row)">编辑</el-button>
+                                <el-button size="mini" type="danger" @click="deleteResearch(scope.row.researchId)">删除</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    
+                    <el-dialog title="科研成果" :visible.sync="researchDialogVisible">
+                        <el-form :model="researchForm" label-width="100px">
+                            <el-form-item label="成果类型" required>
+                                <el-select v-model="researchForm.researchType" placeholder="请选择" style="width: 100%;">
+                                    <el-option label="科研项目" :value="0"></el-option>
+                                    <el-option label="学术论文" :value="1"></el-option>
+                                    <el-option label="知识产权" :value="2"></el-option>
+                                    <el-option label="科研获奖" :value="3"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="成果名称" required>
+                                <el-input v-model="researchForm.title"></el-input>
+                            </el-form-item>
+                            <el-form-item label="级别">
+                                <el-select v-model="researchForm.level" placeholder="请选择" style="width: 100%;">
+                                    <el-option label="国家级" :value="0"></el-option>
+                                    <el-option label="省部级" :value="1"></el-option>
+                                    <el-option label="其他" :value="2"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="时间">
+                                <el-date-picker v-model="researchForm.awardDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                            </el-form-item>
+                            <el-form-item label="备注">
+                                <el-input type="textarea" v-model="researchForm.remark"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <span slot="footer">
+                            <el-button @click="researchDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="saveResearch">保存</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentPage: 'dashboard',
+                activeMenu: 'dashboard',
+                currentUser: {},
+                myCourses: [],
+                scores: [],
+                courseStudents: [],
+                researchList: [],
+                scoreInputVisible: false,
+                researchDialogVisible: false,
+                scoreCourseId: null,
+                studentCourseId: null,
+                scoreInputList: [],
+                researchForm: { title: '', researchType: 0, level: 0, awardDate: '', remark: '' },
+                totalStudents: 0,
+                pendingScores: 0
+            },
+            created() {
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.currentUser = JSON.parse(user);
+                    this.loadMyCourses();
+                    this.loadResearchList(); // 初始化加载科研列表
+                } else {
+                    this.$message.error('未登录，请先登录');
+                    window.location.href = '/index.html';
+                }
+            },
+            methods: {
+                navigateTo(page) {
+                    this.currentPage = page;
+                    this.activeMenu = page;
+                    if (page === 'mycourse') {
+                        this.loadMyCourses();
+                    } else if (page === 'research') {
+                        this.loadResearchList();
+                    }
+                },
+                async loadMyCourses() {
+                    try {
+                        const response = await axios.get('/edu/course/list', {
+                            params: { teacherId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.myCourses = response.data.data || [];
+                            this.totalStudents = this.myCourses.reduce((sum, c) => sum + (c.selectedCount || 0), 0);
+                            this.pendingScores = this.myCourses.length; // TODO: 实际应查询未录入成绩的课程数
+                        }
+                    } catch (error) {
+                        console.error('加载课程失败', error);
+                    }
+                },
+                viewCourseStudents(course) {
+                    this.studentCourseId = course.courseId;
+                    this.currentPage = 'student';
+                    this.activeMenu = 'student';
+                    this.loadCourseStudents();
+                },
+                async loadScores() {
+                    if (!this.scoreCourseId) {
+                        this.$message.warning('请选择课程');
+                        return;
+                    }
+                    try {
+                        const response = await axios.get(`/edu/score/course/${this.scoreCourseId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.scores = response.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载成绩失败');
+                    }
+                },
+                showScoreInputDialog() {
+                    if (!this.scoreCourseId) {
+                        this.$message.warning('请先选择课程');
+                        return;
+                    }
+                    this.scoreInputList = [
+                        { studentNo: '2024001', studentName: '张三', usualScore: null, midtermScore: null, finalScore: null },
+                        { studentNo: '2024002', studentName: '李四', usualScore: null, midtermScore: null, finalScore: null }
+                    ];
+                    this.scoreInputVisible = true;
+                },
+                calculateTotal(row) {
+                    const usual = row.usualScore || 0;
+                    const midterm = row.midtermScore || 0;
+                    const final = row.finalScore || 0;
+                    const total = usual * 0.3 + midterm * 0.2 + final * 0.5;
+                    return total > 0 ? total.toFixed(1) : '-';
+                },
+                getStatusType(status) {
+                    const map = { '0': '', '1': 'warning', '2': 'success' };
+                    return map[status] || '';
+                },
+                getStatusText(status) {
+                    const map = { '0': '草稿', '1': '待审核', '2': '已发布' };
+                    return map[status] || '未知';
+                },
+                async saveSingleScore(row) {
+                    try {
+                        const data = {
+                            scoreId: row.scoreId,
+                            studentId: row.studentId,
+                            courseId: row.courseId,
+                            semesterId: row.semesterId,
+                            regularScore: row.usualScore,
+                            finalScore: row.finalScore,
+                            totalScore: parseFloat(this.calculateTotal(row)),
+                            status: row.status
+                        };
+                        const response = await axios.put('/edu/score', data, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('保存成功');
+                            this.loadScores();
+                        }
+                    } catch (error) {
+                        this.$message.error('保存失败');
+                    }
+                },
+                async submitScoreForReview(courseId) {
+                    this.$confirm('提交后将无法修改，确定提交审核吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.post(`/edu/score/submit/${courseId}`, {}, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('提交成功');
+                                this.loadScores();
+                            }
+                        } catch (error) {
+                            this.$message.error('提交失败');
+                        }
+                    }).catch(() => {});
+                },
+                async batchSaveScores() {
+                    if (!this.scoreCourseId) {
+                        this.$message.warning('请先选择课程');
+                        return;
+                    }
+                    try {
+                        const now = new Date();
+                        const timeStr = now.getFullYear() + '-' + 
+                            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                            String(now.getDate()).padStart(2, '0') + 'T' + 
+                            String(now.getHours()).padStart(2, '0') + ':' + 
+                            String(now.getMinutes()).padStart(2, '0') + ':' + 
+                            String(now.getSeconds()).padStart(2, '0');
+                        
+                        const scores = this.scoreInputList.map(item => ({
+                            studentId: 1,
+                            courseId: this.scoreCourseId,
+                            semesterId: 1,
+                            regularScore: item.usualScore || 0,
+                            finalScore: item.finalScore || 0,
+                            totalScore: parseFloat(this.calculateTotal(item)) || 0,
+                            status: '0',
+                            inputBy: this.currentUser.userId
+                        }));
+                        const response = await axios.post('/edu/score/batch', scores, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('批量保存成功');
+                            this.scoreInputVisible = false;
+                            this.loadScores();
+                        } else {
+                            this.$message.error(response.data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        console.error('批量保存错误:', error);
+                        this.$message.error(error.response?.data?.message || '保存失败');
+                    }
+                },
+                async loadCourseStudents() {
+                    if (!this.studentCourseId) {
+                        this.$message.warning('请选择课程');
+                        return;
+                    }
+                    // TODO: 调用后端接口获取选课学生
+                    this.courseStudents = [
+                        { studentNo: '2024001', studentName: '张三', className: '计算机1班', phone: '13800138001', email: 'zhangsan@example.com' },
+                        { studentNo: '2024002', studentName: '李四', className: '计算机1班', phone: '13800138002', email: 'lisi@example.com' }
+                    ];
+                },
+                exportStudentList() {
+                    if (!this.studentCourseId || this.courseStudents.length === 0) {
+                        this.$message.warning('暂无数据可导出');
+                        return;
+                    }
+                    // CSV导出
+                    let csv = '学号,姓名,班级,手机号,邮箱\n';
+                    this.courseStudents.forEach(s => {
+                        csv += `${s.studentNo},${s.studentName},${s.className},${s.phone},${s.email}\n`;
+                    });
+                    
+                    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `学生名单_${new Date().getTime()}.csv`;
+                    link.click();
+                    this.$message.success('导出成功');
+                },
+                showResearchDialog() {
+                    this.researchForm = { title: '', researchType: 0, level: 0, awardDate: '', remark: '' };
+                    this.researchDialogVisible = true;
+                },
+                editResearch(row) {
+                    this.researchForm = JSON.parse(JSON.stringify(row));
+                    this.researchDialogVisible = true;
+                },
+                async saveResearch() {
+                    if (!this.researchForm.title) {
+                        this.$message.error('请输入成果名称');
+                        return;
+                    }
+                    try {
+                        const data = { 
+                            ...this.researchForm, 
+                            teacherId: this.currentUser.userId,
+                            researchType: String(this.researchForm.researchType),
+                            level: String(this.researchForm.level),
+                            status: '0'
+                        };
+                        const response = await axios.post('/edu/research', data, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('保存成功');
+                            this.researchDialogVisible = false;
+                            this.loadResearchList();
+                        } else {
+                            this.$message.error(response.data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        console.error('保存科研错误:', error);
+                        this.$message.error(error.response?.data?.message || '保存失败');
+                    }
+                },
+                async loadResearchList() {
+                    try {
+                        const response = await axios.get('/edu/research/list', {
+                            params: { teacherId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.researchList = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载科研列表失败', error);
+                    }
+                },
+                deleteResearch(researchId) {
+                    this.$confirm('确定要删除该成果吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.delete(`/edu/research/${researchId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('删除成功');
+                                this.loadResearchList();
+                            }
+                        } catch (error) {
+                            this.$message.error('删除失败');
+                        }
+                    }).catch(() => {});
+                },
+                handleLogout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    this.$message.success('已退出登录');
+                    window.location.href = '/index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
