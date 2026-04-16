@@ -64,11 +64,17 @@ public class SysUserController {
             // 检查学号是否已存在
             SysUser existUser = userService.getUserByUsername(user.getUserName());
             if (existUser != null) {
-                return Result.error("学号已存在");
+                return Result.error("学号/工号已存在");
             }
             String encodedPassword = cn.hutool.crypto.digest.BCrypt.hashpw(user.getPassword(), 
                 cn.hutool.crypto.digest.BCrypt.gensalt());
             user.setPassword(encodedPassword);
+        } else {
+            // 更新时如果不传密码，保留原密码
+            SysUser oldUser = userService.getById(user.getUserId());
+            if (oldUser != null && (user.getPassword() == null || user.getPassword().isEmpty())) {
+                user.setPassword(oldUser.getPassword());
+            }
         }
         return Result.success(userService.saveOrUpdate(user));
     }

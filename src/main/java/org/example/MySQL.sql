@@ -67,21 +67,22 @@ CREATE TABLE edu_class (
 DROP TABLE IF EXISTS sys_user;
 CREATE TABLE sys_user (
     user_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    user_name VARCHAR(30) NOT NULL UNIQUE,
-    real_name VARCHAR(30) NOT NULL,
-    password VARCHAR(100) NOT NULL,
-    user_type CHAR(1) NOT NULL DEFAULT '0',
-    email VARCHAR(50) DEFAULT NULL,
-    phone VARCHAR(20) DEFAULT NULL,
-    gender CHAR(1) DEFAULT '0',
-    avatar VARCHAR(200) DEFAULT NULL,
-    dept_id BIGINT DEFAULT NULL,
-    status CHAR(1) DEFAULT '0',
-    login_ip VARCHAR(50) DEFAULT NULL,
-    login_date DATETIME DEFAULT NULL,
-    create_time DATETIME DEFAULT NULL,
-    update_time DATETIME DEFAULT NULL,
-    deleted TINYINT DEFAULT 0,
+    user_name VARCHAR(30) NOT NULL UNIQUE COMMENT '用户名（学号/工号）',
+    real_name VARCHAR(30) DEFAULT NULL COMMENT '真实姓名',
+    password VARCHAR(100) NOT NULL COMMENT '密码',
+    user_type CHAR(1) NOT NULL DEFAULT '0' COMMENT '用户类型 0-学生 1-教师 2-管理员',
+    email VARCHAR(50) DEFAULT NULL COMMENT '邮箱',
+    phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
+    gender CHAR(1) DEFAULT '0' COMMENT '性别',
+    avatar VARCHAR(200) DEFAULT NULL COMMENT '头像路径',
+    dept_id BIGINT DEFAULT NULL COMMENT '所属部门',
+    status CHAR(1) DEFAULT '0' COMMENT '状态',
+    login_ip VARCHAR(50) DEFAULT NULL COMMENT '最后登录 IP',
+    login_date DATETIME DEFAULT NULL COMMENT '最后登录时间',
+    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME DEFAULT NULL COMMENT '更新时间',
+    remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+    deleted TINYINT DEFAULT 0 COMMENT '删除标志',
     INDEX idx_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -259,26 +260,30 @@ CREATE TABLE edu_teacher_family (
 
 -- Init Data
 INSERT INTO sys_department (dept_name, dept_code, dept_type, status) VALUES 
-('Computer Science', 'CS', 1, '0'),
-('Software Engineering', 'SE', 1, '0');
+('清华大学', 'THU', 0, '0'),
+('计算机学院', 'CS', 1, '0');
 
 INSERT INTO sys_user (user_name, real_name, password, user_type, dept_id, status) VALUES 
-('admin', 'Admin', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
-('T001', 'Li Teacher', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 1, '0'),
-('2024001', 'Zhang San', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 1, '0');
+('admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
+('T001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
+('2024001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
 
 INSERT INTO edu_teacher (user_id, teacher_no, dept_id, title, degree) VALUES 
-(2, 'T001', 1, 1, 2);
+(2, 'T001', 2, 1, 2);
 
 INSERT INTO edu_student (user_id, student_no, grade_id, enrollment_year, nation, political_status) VALUES 
-(3, '2024001', 1, 2024, 'Han', 1);
+(3, '2024001', 1, 2024, '汉', 1);
 
 INSERT INTO sys_role (role_name, role_key, role_sort, status) VALUES 
-('Student', 'student', 1, '0'),
-('Teacher', 'teacher', 2, '0'),
-('Admin', 'admin', 3, '0');
+('超级管理员', 'admin', 1, '0'),
+('学校教务管理员', 'school_academic', 2, '0'),
+('院系教务秘书', 'dept_academic', 3, '0'),
+('普通教师', 'teacher', 4, '0'),
+('系主任', 'dept_head', 5, '0'),
+('辅导员', 'counselor', 6, '0'),
+('学生', 'student', 7, '0');
 
-INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 3), (2, 2), (3, 1);
+INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1), (2, 4), (3, 7);
 
 INSERT INTO edu_grade (grade_name, grade_code, entrance_year, is_current, status) VALUES 
 ('Grade 2024', '2024', 2024, '1', '0');

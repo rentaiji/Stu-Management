@@ -32,6 +32,12 @@ public class CourseController {
 
     @PostMapping
     public Result<Boolean> save(@RequestBody EduCourse course) {
+        // 检查课程代码是否已存在
+        LambdaQueryWrapper<EduCourse> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EduCourse::getCourseCode, course.getCourseCode());
+        if (courseService.count(wrapper) > 0) {
+            return Result.error("课程代码已存在");
+        }
         boolean success = courseService.save(course);
         return success ? Result.success(true) : Result.error("添加失败");
     }

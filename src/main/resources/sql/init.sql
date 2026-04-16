@@ -20,11 +20,10 @@ CREATE TABLE sys_department (
 DROP TABLE IF EXISTS sys_user;
 CREATE TABLE sys_user (
     user_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户 ID',
-    user_account VARCHAR(30) NOT NULL UNIQUE COMMENT '用户账号（学号/工号）',
-    user_name VARCHAR(30) NOT NULL COMMENT '用户名',
+    user_name VARCHAR(30) NOT NULL UNIQUE COMMENT '用户名（学号/工号）',
     real_name VARCHAR(30) DEFAULT NULL COMMENT '真实姓名',
     password VARCHAR(100) NOT NULL COMMENT '密码',
-    user_type CHAR(1) DEFAULT '0' COMMENT '用户类型',
+    user_type CHAR(1) DEFAULT '0' COMMENT '用户类型 0-学生 1-教师 2-管理员',
     email VARCHAR(50) DEFAULT NULL COMMENT '邮箱',
     phone VARCHAR(11) DEFAULT NULL COMMENT '手机号',
     gender CHAR(1) DEFAULT '0' COMMENT '性别',
@@ -86,7 +85,7 @@ CREATE TABLE edu_class (
 DROP TABLE IF EXISTS edu_course;
 CREATE TABLE edu_course (
     course_id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '课程 ID',
-    course_code VARCHAR(20) NOT NULL COMMENT '课程代码',
+    course_code VARCHAR(20) NOT NULL UNIQUE COMMENT '课程代码',
     course_name VARCHAR(100) NOT NULL COMMENT '课程名称',
     credits DECIMAL(3,1) NOT NULL COMMENT '学分',
     hours INT NOT NULL COMMENT '学时',
@@ -151,17 +150,21 @@ INSERT INTO sys_department (dept_name, dept_code, dept_type, status) VALUES
 ('清华大学', 'THU', 0, '0'),
 ('计算机学院', 'CS', 1, '0');
 
-INSERT INTO sys_user (user_account, user_name, real_name, password, user_type, dept_id, status) VALUES 
-('admin', 'admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
-('T001', 'teacher001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
-('2024001', 'stu001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
+INSERT INTO sys_user (user_name, real_name, password, user_type, dept_id, status) VALUES 
+('admin', '系统管理员', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '2', 1, '0'),
+('T001', '李老师', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '1', 2, '0'),
+('2024001', '张三', '$2a$10$N.zxrWvOlqMDvpQfMzKWyO3Yp4JKVLPqN9sVN8bEJxLZLKxLKxLKx', '0', 2, '0');
 
 INSERT INTO sys_role (role_name, role_key, role_sort, status) VALUES 
-('学生', 'student', 1, '0'),
-('教师', 'teacher', 2, '0'),
-('管理员', 'admin', 3, '0');
+('超级管理员', 'admin', 1, '0'),
+('学校教务管理员', 'school_academic', 2, '0'),
+('院系教务秘书', 'dept_academic', 3, '0'),
+('普通教师', 'teacher', 4, '0'),
+('系主任', 'dept_head', 5, '0'),
+('辅导员', 'counselor', 6, '0'),
+('学生', 'student', 7, '0');
 
-INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 3), (2, 2), (3, 1);
+INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 1), (2, 4), (3, 7);
 
 INSERT INTO edu_grade (grade_name, grade_code, entrance_year, is_current, status) VALUES 
 ('2024 级', '2024', 2024, '1', '0');
