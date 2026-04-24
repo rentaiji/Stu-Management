@@ -2,8 +2,11 @@ package org.example.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.example.common.Result;
+import org.example.entity.EduCourse;
 import org.example.entity.EduScore;
 import org.example.entity.EduStudent;
+import org.example.mapper.EduCourseMapper;
 import org.example.mapper.EduScoreMapper;
 import org.example.mapper.EduStudentMapper;
 import org.example.service.EduScoreService;
@@ -20,6 +23,9 @@ public class EduScoreServiceImpl extends ServiceImpl<EduScoreMapper, EduScore> i
 
     @Autowired
     private EduStudentMapper studentMapper;
+
+    @Autowired
+    private EduCourseMapper courseMapper;
 
     @Override
     public List<Map<String, Object>> getScoresByCourse(Long courseId) {
@@ -81,5 +87,80 @@ public class EduScoreServiceImpl extends ServiceImpl<EduScoreMapper, EduScore> i
         updateEntity.setStatus("1"); // 1=待审核
         
         return this.update(updateEntity, wrapper);
+    }
+
+    @Override
+    public Result<Boolean> auditScore(Long scoreId, String action, Long auditorId, String remark) {
+        EduScore score = this.getById(scoreId);
+        if (score == null) {
+            return Result.error("成绩记录不存在");
+        }
+        
+        if (!"1".equals(score.getStatus())) {
+            return Result.error("该成绩不是待审核状态");
+        }
+        
+        if ("approve".equals(action)) {
+            score.setStatus("2");
+        } else if ("reject".equals(action)) {
+            score.setStatus("0");
+            score.setRemark(remark != null ? remark : "审核不通过");
+        } else {
+            return Result.error("无效的操作");
+        }
+        
+        boolean updated = this.updateById(score);
+        return updated ? Result.success(true) : Result.error("操作失败");
+    }
+
+    @Override
+    public Result<List<Map<String, Object>>> getPendingAuditScores() {
+        LambdaQueryWrapper<EduScore> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EduScore::getStatus, "1");
+        List<EduScore> scores = this.list(wrapper);
+        
+        Set<Long> studentIds = scores.stream().map(EduScore::getStudentId).collect(Collectors.toSet());
+        Set<Long> courseIds = scores.stream().map(EduScore::getCourseId).collect(Collectors.toSet());
+        
+        Map<Long, EduStudent> studentMap = new HashMap<>();
+        Map<Long, EduCourse> courseMap = new HashMap<>();
+        
+        if (!studentIds.isEmpty()) {
+            List<EduStudent> students = studentMapper.selectBatchIds(studentIds);
+            studentMap = students.stream().collect(Collectors.toMap(EduStudent::getStudentId, s -> s));
+        }
+        
+        if (!courseIds.isEmpty()) {
+            List<EduCourse> courses = courseMapper.selectBatchIds(courseIds);
+            courseMap = courses.stream().collect(Collectors.toMap(EduCourse::getCourseId, c -> c));
+        }
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (EduScore score : scores) {
+            Map<String, Object> item = new HashMap<>();
+            EduStudent student = studentMap.get(score.getStudentId());
+            EduCourse course = courseMap.get(score.getCourseId());
+            
+            item.put("scoreId", score.getScoreId());
+            item.put("studentId", score.getStudentId());
+            item.put("courseId", score.getCourseId());
+            item.put("totalScore", score.getTotalScore());
+            item.put("status", score.getStatus());
+            item.put("inputTime", score.getInputTime());
+            
+            if (student != null) {
+                item.put("studentNo", student.getStudentNo());
+                item.put("studentName", student.getRealName());
+            }
+            
+            if (course != null) {
+                item.put("courseName", course.getCourseName());
+                item.put("courseCode", course.getCourseCode());
+            }
+            
+            result.add(item);
+        }
+        
+        return Result.success(result);
     }
 }

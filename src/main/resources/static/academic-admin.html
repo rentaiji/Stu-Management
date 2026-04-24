@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教务管理 - 学生综合服务与教学协同平台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { cursor: pointer; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .sidebar { width: 200px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .stat-card { padding: 20px; text-align: center; border-radius: 8px; color: white; }
+        .stat-card h3 { font-size: 32px; margin-bottom: 5px; }
+        .stat-card p { font-size: 14px; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>教务管理平台</h1>
+            <div class="user-info">
+                <span>欢迎，{{ currentUser.realName || currentUser.userName }}</span>
+                <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="sidebar">
+                <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
+                    <el-menu-item index="dashboard">
+                        <i class="el-icon-s-home"></i>
+                        <span>首页</span>
+                    </el-menu-item>
+                    <el-menu-item index="course-release">
+                        <i class="el-icon-collection"></i>
+                        <span>课程发布</span>
+                    </el-menu-item>
+                    <el-menu-item index="score-audit">
+                        <i class="el-icon-edit-outline"></i>
+                        <span>成绩审核</span>
+                    </el-menu-item>
+                    <el-menu-item index="enroll-manage">
+                        <i class="el-icon-circle-check"></i>
+                        <span>选课管理</span>
+                    </el-menu-item>
+                    <el-menu-item index="research-audit">
+                        <i class="el-icon-document-checked"></i>
+                        <span>科研审核</span>
+                    </el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <div v-if="currentPage === 'dashboard'" class="card">
+                    <h2>教务工作台</h2>
+                    <el-row :gutter="20" style="margin-top: 20px;">
+                        <el-col :span="8">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <h3>{{ pendingAuditCount }}</h3>
+                                <p>待审核成绩</p>
+                            </div>
+                        </el-col>
+                        <el-col :span="8">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                                <h3>{{ releasedCourseCount }}</h3>
+                                <p>已发布课程</p>
+                            </div>
+                        </el-col>
+                        <el-col :span="8">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                                <h3>{{ totalEnrollCount }}</h3>
+                                <p>选课总人数</p>
+                            </div>
+                        </el-col>
+                    </el-row>
+                </div>
+
+                <div v-if="currentPage === 'course-release'" class="card">
+                    <h2>课程发布管理</h2>
+                    <el-tabs v-model="releaseTab">
+                        <el-tab-pane label="课程库" name="library">
+                            <el-table :data="courseLibrary" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                                <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                                <el-table-column prop="credits" label="学分"></el-table-column>
+                                <el-table-column prop="hours" label="学时"></el-table-column>
+                                <el-table-column label="操作" width="150">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" type="primary" @click="showReleaseDialog(scope.row)">发布到学期</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-tab-pane>
+                        <el-tab-pane label="已发布课程" name="released">
+                            <el-table :data="releasedCourses" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                                <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                                <el-table-column prop="teacherId" label="授课教师ID"></el-table-column>
+                                <el-table-column prop="capacity" label="容量"></el-table-column>
+                                <el-table-column prop="selectedCount" label="已选人数"></el-table-column>
+                                <el-table-column prop="classTime" label="上课时间"></el-table-column>
+                                <el-table-column prop="classLocation" label="上课地点"></el-table-column>
+                                <el-table-column label="状态" width="100">
+                                    <template slot-scope="scope">
+                                        <el-tag :type="scope.row.releaseStatus === '1' ? 'success' : 'info'">
+                                            {{ scope.row.releaseStatus === '1' ? '已发布' : '已关闭' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="150">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" type="danger" @click="closeRelease(scope.row.id)" v-if="scope.row.releaseStatus === '1' && scope.row.selectedCount === 0">关闭</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-tab-pane>
+                    </el-tabs>
+
+                    <el-dialog title="发布课程" :visible.sync="releaseDialogVisible" width="500px">
+                        <el-form :model="releaseForm" label-width="100px">
+                            <el-form-item label="课程名称">
+                                <el-input v-model="releaseForm.courseName" disabled></el-input>
+                            </el-form-item>
+                            <el-form-item label="授课教师ID" required>
+                                <el-input-number v-model="releaseForm.teacherId" :min="1" style="width: 100%;"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="容量" required>
+                                <el-input-number v-model="releaseForm.capacity" :min="1" style="width: 100%;"></el-input-number>
+                            </el-form-item>
+                            <el-form-item label="上课时间">
+                                <el-input v-model="releaseForm.classTime" placeholder="如：周一 1-2节"></el-input>
+                            </el-form-item>
+                            <el-form-item label="上课地点">
+                                <el-input v-model="releaseForm.classLocation" placeholder="如：A101"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <span slot="footer">
+                            <el-button @click="releaseDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmRelease">确认发布</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+
+                <div v-if="currentPage === 'score-audit'" class="card">
+                    <h2>成绩审核</h2>
+                    <el-alert title="审核教师提交的成绩，可以打回重新修改" type="info" :closable="false" style="margin-bottom: 15px;"></el-alert>
+                    <el-button type="primary" @click="loadPendingAudit" icon="el-icon-refresh">刷新</el-button>
+                    <el-table :data="pendingAuditScores" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="studentNo" label="学号"></el-table-column>
+                        <el-table-column prop="studentName" label="学生姓名"></el-table-column>
+                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="totalScore" label="总成绩" width="100"></el-table-column>
+                        <el-table-column prop="inputTime" label="提交时间" width="180"></el-table-column>
+                        <el-table-column label="操作" width="200">
+                            <template slot-scope="scope">
+                                <el-button size="mini" type="success" @click="auditScore(scope.row, 'approve')">通过</el-button>
+                                <el-button size="mini" type="warning" @click="showRejectDialog(scope.row)">打回</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+
+                    <el-dialog title="打回原因" :visible.sync="rejectDialogVisible" width="500px">
+                        <el-input type="textarea" v-model="rejectReason" placeholder="请输入打回原因" :rows="4"></el-input>
+                        <span slot="footer">
+                            <el-button @click="rejectDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmReject">确认打回</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+
+                <div v-if="currentPage === 'enroll-manage'" class="card">
+                    <h2>选课管理</h2>
+                    <el-select v-model="enrollCourseId" placeholder="选择课程" style="width: 200px; margin-right: 10px;" @change="loadEnrollStudents">
+                        <el-option v-for="course in releasedCourses" :key="course.id" :label="course.courseName" :value="course.courseId"></el-option>
+                    </el-select>
+                    <el-button type="primary" @click="loadEnrollStudents">查询</el-button>
+                    <el-table :data="enrollStudents" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="studentNo" label="学号"></el-table-column>
+                        <el-table-column prop="realName" label="姓名"></el-table-column>
+                        <el-table-column prop="selectTime" label="选课时间" width="180"></el-table-column>
+                        <el-table-column label="操作" width="150">
+                            <template slot-scope="scope">
+                                <el-button size="mini" type="danger" @click="cancelEnroll(scope.row)">强制退课</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 科研审核 -->
+                <div v-if="currentPage === 'research-audit'" class="card">
+                    <h2>科研申报审核</h2>
+                    <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
+                    <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
+                    <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="title" label="标题"></el-table-column>
+                        <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                        <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                        <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
+                        <el-table-column label="操作" width="200">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
+                                <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                    
+                    <!-- 详情对话框 -->
+                    <el-dialog title="申报详情" :visible.sync="researchDetailDialogVisible" width="70%">
+                        <div v-if="researchDetail">
+                            <el-descriptions :column="2" border>
+                                <el-descriptions-item label="标题">{{ researchDetail.application.title }}</el-descriptions-item>
+                                <el-descriptions-item label="类型">{{ researchDetail.typeName }}</el-descriptions-item>
+                                <el-descriptions-item label="提交时间">{{ researchDetail.application.createTime }}</el-descriptions-item>
+                            </el-descriptions>
+                            <h4 style="margin-top: 20px;">详细信息</h4>
+                            <pre style="background: #f5f7fa; padding: 15px; border-radius: 4px; overflow: auto;">{{ JSON.stringify(researchDetail.detail, null, 2) }}</pre>
+                        </div>
+                    </el-dialog>
+                    
+                    <!-- 拒绝原因对话框 -->
+                    <el-dialog title="拒绝原因" :visible.sync="rejectResearchDialogVisible" width="500px">
+                        <el-input type="textarea" v-model="rejectResearchReason" placeholder="请输入拒绝原因" :rows="4"></el-input>
+                        <span slot="footer">
+                            <el-button @click="rejectResearchDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmRejectResearch">确认拒绝</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentPage: 'dashboard',
+                activeMenu: 'dashboard',
+                currentUser: {},
+                releaseTab: 'library',
+                courseLibrary: [],
+                releasedCourses: [],
+                pendingAuditScores: [],
+                enrollStudents: [],
+                releaseDialogVisible: false,
+                rejectDialogVisible: false,
+                releaseForm: { courseId: null, courseName: '', teacherId: null, capacity: 100, classTime: '', classLocation: '' },
+                rejectReason: '',
+                currentAuditScore: null,
+                enrollCourseId: null,
+                pendingAuditCount: 0,
+                releasedCourseCount: 0,
+                totalEnrollCount: 0,
+                pendingResearch: [],
+                researchDetailDialogVisible: false,
+                rejectResearchDialogVisible: false,
+                researchDetail: null,
+                currentResearchAudit: null,
+                rejectResearchReason: ''
+            },
+            created() {
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.currentUser = JSON.parse(user);
+                    this.loadDashboardData();
+                } else {
+                    this.$message.error('未登录');
+                    window.location.href = '/index.html';
+                }
+            },
+            methods: {
+                navigateTo(page) {
+                    this.currentPage = page;
+                    this.activeMenu = page;
+                    if (page === 'course-release') {
+                        this.loadCourseLibrary();
+                        this.loadReleasedCourses();
+                    } else if (page === 'score-audit') {
+                        this.loadPendingAudit();
+                    } else if (page === 'research-audit') {
+                        this.loadPendingResearch();
+                    }
+                },
+                async loadDashboardData() {
+                    await this.loadPendingAudit();
+                    await this.loadReleasedCourses();
+                    this.pendingAuditCount = this.pendingAuditScores.length;
+                    this.releasedCourseCount = this.releasedCourses.length;
+                    this.totalEnrollCount = this.releasedCourses.reduce((sum, c) => sum + (c.selectedCount || 0), 0);
+                },
+                async loadCourseLibrary() {
+                    try {
+                        const res = await axios.get('/edu/course/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.courseLibrary = res.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载课程失败');
+                    }
+                },
+                async loadReleasedCourses() {
+                    try {
+                        const res = await axios.get('/edu/course-release/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.releasedCourses = res.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+                },
+                showReleaseDialog(course) {
+                    this.releaseForm = {
+                        courseId: course.courseId,
+                        courseName: course.courseName,
+                        teacherId: null,
+                        capacity: course.capacity || 100,
+                        classTime: '',
+                        classLocation: ''
+                    };
+                    this.releaseDialogVisible = true;
+                },
+                async confirmRelease() {
+                    if (!this.releaseForm.teacherId) {
+                        this.$message.error('请输入授课教师ID');
+                        return;
+                    }
+                    try {
+                        const res = await axios.post('/edu/course-release/release', this.releaseForm, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.$message.success('发布成功');
+                            this.releaseDialogVisible = false;
+                            this.loadCourseLibrary();
+                            this.loadReleasedCourses();
+                        } else {
+                            this.$message.error(res.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('发布失败');
+                    }
+                },
+                async closeRelease(releaseId) {
+                    try {
+                        const res = await axios.post(`/edu/course-release/close/${releaseId}`, {}, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.$message.success('关闭成功');
+                            this.loadReleasedCourses();
+                        }
+                    } catch (error) {
+                        this.$message.error('关闭失败');
+                    }
+                },
+                async loadPendingAudit() {
+                    try {
+                        const res = await axios.get('/edu/score/pending-audit', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.pendingAuditScores = res.data.data || [];
+                            this.pendingAuditCount = this.pendingAuditScores.length;
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                auditScore(row, action) {
+                    if (action === 'approve') {
+                        this.$confirm('确认通过该成绩？', '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        }).then(() => {
+                            this.submitAudit(row.scoreId, action, '');
+                        });
+                    }
+                },
+                showRejectDialog(row) {
+                    this.currentAuditScore = row;
+                    this.rejectReason = '';
+                    this.rejectDialogVisible = true;
+                },
+                confirmReject() {
+                    if (!this.rejectReason) {
+                        this.$message.error('请输入打回原因');
+                        return;
+                    }
+                    this.submitAudit(this.currentAuditScore.scoreId, 'reject', this.rejectReason);
+                    this.rejectDialogVisible = false;
+                },
+                async submitAudit(scoreId, action, remark) {
+                    try {
+                        const res = await axios.post('/edu/score/audit', {
+                            scoreId: scoreId,
+                            action: action,
+                            remark: remark
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.$message.success(action === 'approve' ? '审核通过' : '已打回');
+                            this.loadPendingAudit();
+                        } else {
+                            this.$message.error(res.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('操作失败');
+                    }
+                },
+                async loadEnrollStudents() {
+                    if (!this.enrollCourseId) {
+                        this.$message.warning('请选择课程');
+                        return;
+                    }
+                    try {
+                        const res = await axios.get(`/edu/course/students/${this.enrollCourseId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.enrollStudents = res.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                cancelEnroll(row) {
+                    this.$confirm('确认强制退课？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const res = await axios.post(`/edu/course/drop/${row.courseId}`, {}, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (res.data.code === 200) {
+                                this.$message.success('退课成功');
+                                this.loadEnrollStudents();
+                                this.loadReleasedCourses();
+                            }
+                        } catch (error) {
+                            this.$message.error('退课失败');
+                        }
+                    });
+                },
+                handleLogout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = '/index.html';
+                },
+                // 科研审核相关方法
+                async loadPendingResearch() {
+                    try {
+                        const res = await axios.get('/edu/research/pending-audit', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.pendingResearch = res.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载待审核列表失败', error);
+                        this.$message.error('加载失败');
+                    }
+                },
+                async viewResearchDetail(applicationId) {
+                    try {
+                        const res = await axios.get(`/edu/research/detail/${applicationId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.researchDetail = res.data.data;
+                            this.researchDetailDialogVisible = true;
+                        }
+                    } catch (error) {
+                        console.error('加载详情失败', error);
+                        this.$message.error('加载详情失败');
+                    }
+                },
+                auditResearch(row, status) {
+                    const action = status === '1' ? '通过' : '拒绝';
+                    this.$confirm(`确认${action}该申请？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const res = await axios.post('/edu/research/audit', {
+                                applicationId: row.applicationId,
+                                status: status,
+                                auditRemark: status === '1' ? '审核通过' : ''
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (res.data.code === 200) {
+                                this.$message.success(`${action}成功`);
+                                this.loadPendingResearch();
+                            } else {
+                                this.$message.error(res.data.message || `${action}失败`);
+                            }
+                        } catch (error) {
+                            console.error('审核失败', error);
+                            this.$message.error(error.response?.data?.message || '审核失败');
+                        }
+                    }).catch(() => {});
+                },
+                showRejectResearchDialog(row) {
+                    this.currentResearchAudit = row;
+                    this.rejectResearchReason = '';
+                    this.rejectResearchDialogVisible = true;
+                },
+                async confirmRejectResearch() {
+                    if (!this.rejectResearchReason.trim()) {
+                        this.$message.warning('请输入拒绝原因');
+                        return;
+                    }
+                    try {
+                        const res = await axios.post('/edu/research/audit', {
+                            applicationId: this.currentResearchAudit.applicationId,
+                            status: '2',
+                            auditRemark: this.rejectResearchReason
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.$message.success('已拒绝');
+                            this.rejectResearchDialogVisible = false;
+                            this.loadPendingResearch();
+                        } else {
+                            this.$message.error(res.data.message || '操作失败');
+                        }
+                    } catch (error) {
+                        console.error('拒绝失败', error);
+                        this.$message.error(error.response?.data?.message || '操作失败');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

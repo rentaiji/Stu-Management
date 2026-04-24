@@ -34,6 +34,24 @@ public class SysUser implements Serializable {
     @TableField("gender")
     private String gender;
 
+    @TableField("birth_date")
+    private java.time.LocalDate birthDate;
+
+    @TableField("id_card")
+    private String idCard;
+
+    @TableField("nation")
+    private String nation;
+
+    @TableField("political_status")
+    private Integer politicalStatus;
+
+    @TableField("native_place")
+    private String nativePlace;
+
+    @TableField("home_address")
+    private String homeAddress;
+
     @TableField("avatar")
     private String avatar;
 

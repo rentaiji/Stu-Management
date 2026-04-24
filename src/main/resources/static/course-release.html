@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程发布管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logout-btn {
+            padding: 8px 20px;
+            background: #f56c6c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #e04e4e;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .course-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .course-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .course-card:hover {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .course-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .course-code {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .course-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #f56c6c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e04e4e;
+        }
+
+        .btn-success {
+            background: #67c23a;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #5daf34;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1001;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.success {
+            background: #67c23a;
+        }
+
+        .message.error {
+            background: #f56c6c;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-released {
+            background: #e1f3d8;
+            color: #67c23a;
+        }
+
+        .status-closed {
+            background: #fde2e2;
+            color: #f56c6c;
+        }
+
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 课程发布管理</h1>
+            <div class="user-info">
+                <span id="userName"></span>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>课程库（待发布）</h2>
+            <div id="courseLibrary" class="course-list">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>已发布课程</h2>
+            <div id="releasedCourses" class="course-list">
+                <div class="empty-tip">暂无发布课程</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="releaseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">发布课程</div>
+            <form id="releaseForm">
+                <input type="hidden" id="courseId">
+                <div class="form-group">
+                    <label>课程名称</label>
+                    <input type="text" id="courseName" readonly>
+                </div>
+                <div class="form-group">
+                    <label>授课教师 ID</label>
+                    <input type="number" id="teacherId" required>
+                </div>
+                <div class="form-group">
+                    <label>容量</label>
+                    <input type="number" id="capacity" required>
+                </div>
+                <div class="form-group">
+                    <label>上课时间</label>
+                    <input type="text" id="classTime" placeholder="例如：周一 1-2节">
+                </div>
+                <div class="form-group">
+                    <label>上课地点</label>
+                    <input type="text" id="classLocation" placeholder="例如：A101">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">确认发布</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+        let currentUser = null;
+        let currentSemesterId = null;
+
+        window.onload = function() {
+            checkLogin();
+            loadCourseLibrary();
+            loadReleasedCourses();
+            loadCurrentSemester();
+        };
+
+        function checkLogin() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = JSON.parse(userStr);
+            document.getElementById('userName').textContent = currentUser.realName || currentUser.userName;
+        }
+
+        async function loadCurrentSemester() {
+            try {
+                const response = await fetch(`${API_BASE}/edu/semester/current`);
+                const result = await response.json();
+                if (result.code === 200 && result.data) {
+                    currentSemesterId = result.data.semesterId;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadCourseLibrary() {
+            try {
+                const response = await fetch(`${API_BASE}/edu/course/list`);
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    renderCourseLibrary(result.data);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderCourseLibrary(courses) {
+            const container = document.getElementById('courseLibrary');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无课程</div>';
+                return;
+            }
+
+            container.innerHTML = courses.map(course => `
+                <div class="course-card">
+                    <div class="course-header">
+                        <div>
+                            <div class="course-name">${course.courseName}</div>
+                            <div class="course-code">${course.courseCode}</div>
+                        </div>
+                        <button class="btn btn-primary" onclick="openReleaseModal(${course.courseId}, '${course.courseName}', ${course.capacity})">
+                            发布到学期
+                        </button>
+                    </div>
+                    <div class="course-info">
+                        <div>学分：${course.credits}</div>
+                        <div>学时：${course.hours}</div>
+                        <div>类型：${getCourseTypeName(course.courseType)}</div>
+                    </div>
+                    ${course.description ? `<div style="color: #666; font-size: 14px; margin-top: 10px;">${course.description}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function loadReleasedCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/edu/course-release/list`);
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    renderReleasedCourses(result.data);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderReleasedCourses(courses) {
+            const container = document.getElementById('releasedCourses');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无发布课程</div>';
+                return;
+            }
+
+            // 过滤掉无效数据
+            const validCourses = courses.filter(course => course && course.courseName);
+            
+            if (validCourses.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无发布课程</div>';
+                return;
+            }
+
+            container.innerHTML = validCourses.map(course => `
+                <div class="course-card">
+                    <div class="course-header">
+                        <div>
+                            <div class="course-name">${course.courseName || '未知课程'}</div>
+                            <div class="course-code">${course.courseCode || ''}</div>
+                        </div>
+                        <div>
+                            <span class="status-badge status-released">已发布</span>
+                            ${(!course.selectedCount || course.selectedCount === 0) ? `<button class="btn btn-danger" onclick="closeCourse(${course.id})" style="margin-left: 10px;">关闭</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="course-info">
+                        <div>学分：${course.credits || 0}</div>
+                        <div>学时：${course.hours || 0}</div>
+                        <div>教师ID：${course.teacherId || '未设置'}</div>
+                    </div>
+                    <div class="course-info">
+                        <div>上课时间：${course.classTime || '未设置'}</div>
+                        <div>上课地点：${course.classLocation || '未设置'}</div>
+                        <div>周次：${course.startWeek || 1}-${course.endWeek || 18}周</div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                        已选人数：${course.selectedCount || 0}/${course.capacity || 0}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openReleaseModal(courseId, courseName, defaultCapacity) {
+            document.getElementById('courseId').value = courseId;
+            document.getElementById('courseName').value = courseName;
+            document.getElementById('capacity').value = defaultCapacity;
+            document.getElementById('releaseModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('releaseModal').classList.remove('active');
+            document.getElementById('releaseForm').reset();
+        }
+
+        document.getElementById('releaseForm').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                courseId: parseInt(document.getElementById('courseId').value),
+                semesterId: currentSemesterId,
+                teacherId: parseInt(document.getElementById('teacherId').value),
+                capacity: parseInt(document.getElementById('capacity').value),
+                classTime: document.getElementById('classTime').value,
+                classLocation: document.getElementById('classLocation').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/edu/course-release/release`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    showMessage('发布成功！', 'success');
+                    closeModal();
+                    loadCourseLibrary();
+                    loadReleasedCourses();
+                } else {
+                    showMessage(result.message || '发布失败', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('网络错误', 'error');
+            }
+        };
+
+        async function closeCourse(releaseId) {
+            if (!confirm('确认关闭该课程？关闭后学生将无法选课。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/edu/course-release/close/${releaseId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    showMessage('关闭成功！', 'success');
+                    loadReleasedCourses();
+                } else {
+                    showMessage(result.message || '关闭失败', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('网络错误', 'error');
+            }
+        }
+
+        function getCourseTypeName(type) {
+            const types = {
+                '0': '必修课',
+                '1': '选修课',
+                '2': '公选课'
+            };
+            return types[type] || '未知';
+        }
+
+        function showMessage(text, type) {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            document.body.appendChild(msg);
+            
+            setTimeout(() => {
+                msg.remove();
+            }, 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

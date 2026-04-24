@@ -33,31 +33,35 @@
         <div class="container">
             <div class="sidebar">
                 <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
-                    <el-menu-item index="dashboard">
+                    <el-menu-item v-if="!hasPermission('academic:course:release')" index="dashboard">
                         <i class="el-icon-s-home"></i>
                         <span>首页</span>
                     </el-menu-item>
                     <el-menu-item index="mycourse">
                         <i class="el-icon-reading"></i>
-                        <span>我的课程</span>
+                        <span>{{ hasPermission('academic:course:release') ? '发布课程' : '我的课程' }}</span>
                     </el-menu-item>
-                    <el-menu-item index="score">
+                    <el-menu-item v-if="!hasPermission('academic:course:release')" index="score">
                         <i class="el-icon-edit"></i>
                         <span>成绩管理</span>
                     </el-menu-item>
-                    <el-menu-item index="student">
+                    <el-menu-item v-if="!hasPermission('academic:course:release')" index="student">
                         <i class="el-icon-user"></i>
                         <span>学生名单</span>
                     </el-menu-item>
-                    <el-menu-item index="research">
+                    <el-menu-item v-if="!hasPermission('academic:course:release')" index="research">
                         <i class="el-icon-document"></i>
-                        <span>科研管理</span>
+                        <span>科研申报</span>
+                    </el-menu-item>
+                    <el-menu-item v-if="hasPermission('academic:course:release')" index="research-audit">
+                        <i class="el-icon-document-checked"></i>
+                        <span>科研审核</span>
                     </el-menu-item>
                 </el-menu>
             </div>
             <div class="main-content">
                 <!-- 首页 -->
-                <div v-if="currentPage === 'dashboard'" class="card">
+                <div v-if="currentPage === 'dashboard' && !hasPermission('academic:course:release')" class="card">
                     <h2>工作台概览</h2>
                     <div style="margin-top: 20px;">
                         <div class="stat-card">
@@ -77,7 +81,11 @@
 
                 <!-- 我的课程 -->
                 <div v-if="currentPage === 'mycourse'" class="card">
-                    <h2>我的课程</h2>
+                    <h2 v-if="hasPermission('academic:course:release')">发布课程</h2>
+                    <h2 v-else>我的课程</h2>
+                    <div style="margin-bottom: 10px;" v-if="hasPermission('academic:course:release')">
+                        <el-button type="primary" @click="showAddCourseDialog">发布课程</el-button>
+                    </div>
                     <el-table :data="myCourses" style="width: 100%; margin-top: 10px;">
                         <el-table-column prop="courseCode" label="课程代码"></el-table-column>
                         <el-table-column prop="courseName" label="课程名称"></el-table-column>
@@ -85,12 +93,68 @@
                         <el-table-column prop="hours" label="学时"></el-table-column>
                         <el-table-column prop="capacity" label="容量"></el-table-column>
                         <el-table-column prop="selectedCount" label="已选人数"></el-table-column>
-                        <el-table-column label="操作" width="150">
+                        <el-table-column label="操作" width="200">
                             <template slot-scope="scope">
                                 <el-button size="mini" @click="viewCourseStudents(scope.row)">查看学生</el-button>
+                                <el-button v-if="hasPermission('academic:course:release')" size="mini" type="primary" @click="editReleasedCourse(scope.row)">编辑</el-button>
+                                <el-button v-if="hasPermission('academic:course:release')" size="mini" type="danger" @click="removeMyCourse(scope.row)">删除</el-button>
                             </template>
                         </el-table-column>
                     </el-table>
+                    
+                    <el-dialog title="发布课程" :visible.sync="addCourseVisible" width="70%">
+                        <div style="margin-bottom: 10px;">
+                            <el-alert title="教务老师发布课程并分配授课教师" type="info" :closable="false"></el-alert>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <el-input v-model="courseSearchKeyword" placeholder="搜索课程代码或名称" style="width: 300px;" clearable @keyup.enter.native="searchAvailableCourses">
+                                <el-button slot="append" icon="el-icon-search" @click="searchAvailableCourses"></el-button>
+                            </el-input>
+                        </div>
+                        <el-table :data="availableCourses" @selection-change="handleCourseSelection" max-height="400">
+                            <el-table-column type="selection" width="55"></el-table-column>
+                            <el-table-column prop="courseCode" label="课程代码" width="120"></el-table-column>
+                            <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                            <el-table-column prop="credits" label="学分" width="80"></el-table-column>
+                            <el-table-column prop="hours" label="学时" width="80"></el-table-column>
+                            <el-table-column label="授课教师" width="150">
+                                <template slot-scope="scope">
+                                    <el-select v-model="scope.row.selectedTeacherId" placeholder="选择教师" size="mini" style="width: 100%;">
+                                        <el-option v-for="teacher in teacherList" :key="teacher.userId" :label="teacher.realName" :value="teacher.userId"></el-option>
+                                    </el-select>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="容量" width="120">
+                                <template slot-scope="scope">
+                                    <el-input-number v-model="scope.row.capacity" :min="1" :max="200" size="mini" style="width: 100%;"></el-input-number>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <span slot="footer">
+                            <el-button @click="addCourseVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmAddCourses" :disabled="selectedCourses.length === 0">发布选中 ({{ selectedCourses.length }})</el-button>
+                        </span>
+                    </el-dialog>
+                    
+                    <el-dialog title="编辑课程" :visible.sync="editCourseVisible" width="50%" v-if="editingCourse">
+                        <el-form :model="editingCourse" label-width="100px">
+                            <el-form-item label="课程名称">
+                                <el-input v-model="editingCourse.courseName" disabled></el-input>
+                            </el-form-item>
+                            <el-form-item label="授课教师">
+                                <el-select v-model="editingCourse.teacherId" placeholder="选择教师" style="width: 100%;">
+                                    <el-option v-for="teacher in teacherList" :key="teacher.userId" :label="teacher.realName" :value="teacher.userId"></el-option>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item label="容量">
+                                <el-input-number v-model="editingCourse.capacity" :min="1" :max="200" style="width: 100%;"></el-input-number>
+                            </el-form-item>
+                        </el-form>
+                        <span slot="footer">
+                            <el-button @click="editCourseVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmEditCourse">保存</el-button>
+                        </span>
+                    </el-dialog>
                 </div>
 
                 <!-- 成绩管理 -->
@@ -183,77 +247,297 @@
                             <el-option v-for="course in myCourses" :key="course.courseId" :label="course.courseName" :value="course.courseId"></el-option>
                         </el-select>
                         <el-button type="primary" @click="loadCourseStudents">查询</el-button>
+                        <el-button type="warning" @click="refreshStudentData" icon="el-icon-refresh">刷新数据</el-button>
                         <el-button type="success" @click="exportStudentList" style="float: right;">导出名单</el-button>
                     </div>
-                    <el-table :data="courseStudents" style="width: 100%; margin-top: 10px;">
-                        <el-table-column prop="studentNo" label="学号"></el-table-column>
-                        <el-table-column prop="studentName" label="姓名"></el-table-column>
-                        <el-table-column prop="className" label="班级"></el-table-column>
-                        <el-table-column prop="phone" label="手机号"></el-table-column>
+                    <el-alert v-if="courseStudents.length > 0" :title="'共 ' + courseStudents.length + ' 名学生'" type="success" :closable="false" style="margin-bottom: 10px;"></el-alert>
+                    
+                    <!-- 调试信息：显示原始数据 -->
+                    <div v-if="courseStudents.length > 0" style="margin-bottom: 10px; padding: 10px; background: #f0f9ff; border: 1px solid #409eff; border-radius: 4px;">
+                        <strong>调试信息 - 原始数据：</strong>
+                        <pre style="margin: 5px 0; font-size: 12px; max-height: 300px; overflow: auto;">{{ JSON.stringify(courseStudents, null, 2) }}</pre>
+                    </div>
+                    
+                    <el-table :data="courseStudents" style="width: 100%; margin-top: 10px;" border>
+                        <el-table-column prop="studentNo" label="学号" width="150"></el-table-column>
+                        <el-table-column prop="realName" label="姓名" width="120"></el-table-column>
+                        <el-table-column prop="phone" label="手机号" width="150"></el-table-column>
                         <el-table-column prop="email" label="邮箱"></el-table-column>
                     </el-table>
+                    <el-empty v-if="courseStudents.length === 0" description="暂无学生数据，请选择课程后点击查询"></el-empty>
                 </div>
 
-                <!-- 科研管理 -->
+                <!-- 科研申报 -->
                 <div v-if="currentPage === 'research'" class="card">
-                    <h2>科研管理</h2>
-                    <el-button type="primary" @click="showResearchDialog()" style="margin-bottom: 10px;">新增科研成果</el-button>
-                    <el-table :data="researchList" style="width: 100%;">
-                        <el-table-column prop="title" label="成果名称"></el-table-column>
-                        <el-table-column prop="researchType" label="类型">
+                    <h2>科研申报</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-button type="primary" @click="showSubmitDialog">新增申报</el-button>
+                        <el-button type="warning" @click="loadMyApplications" icon="el-icon-refresh">刷新</el-button>
+                    </div>
+                    <el-table :data="myApplications" style="width: 100%;">
+                        <el-table-column prop="title" label="标题"></el-table-column>
+                        <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                        <el-table-column prop="statusName" label="状态" width="100">
                             <template slot-scope="scope">
-                                <span v-if="scope.row.researchType === 0">项目</span>
-                                <span v-else-if="scope.row.researchType === 1">论文</span>
-                                <span v-else-if="scope.row.researchType === 2">专利</span>
-                                <span v-else>获奖</span>
+                                <el-tag :type="getStatusTagType(scope.row.status)">{{ scope.row.statusName }}</el-tag>
                             </template>
                         </el-table-column>
-                        <el-table-column prop="level" label="级别">
-                            <template slot-scope="scope">
-                                <span v-if="scope.row.level === 0">国家级</span>
-                                <span v-else-if="scope.row.level === 1">省部级</span>
-                                <span v-else>其他</span>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="awardDate" label="时间"></el-table-column>
+                        <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
                         <el-table-column label="操作" width="150">
                             <template slot-scope="scope">
-                                <el-button size="mini" @click="editResearch(scope.row)">编辑</el-button>
-                                <el-button size="mini" type="danger" @click="deleteResearch(scope.row.researchId)">删除</el-button>
+                                <el-button size="mini" @click="viewApplicationDetail(scope.row.applicationId)">查看详情</el-button>
                             </template>
                         </el-table-column>
                     </el-table>
+                    <el-empty v-if="myApplications.length === 0" description="暂无申报记录"></el-empty>
                     
-                    <el-dialog title="科研成果" :visible.sync="researchDialogVisible">
-                        <el-form :model="researchForm" label-width="100px">
-                            <el-form-item label="成果类型" required>
-                                <el-select v-model="researchForm.researchType" placeholder="请选择" style="width: 100%;">
-                                    <el-option label="科研项目" :value="0"></el-option>
-                                    <el-option label="学术论文" :value="1"></el-option>
-                                    <el-option label="知识产权" :value="2"></el-option>
-                                    <el-option label="科研获奖" :value="3"></el-option>
+                    <!-- 申报对话框 -->
+                    <el-dialog title="科研申报" :visible.sync="submitDialogVisible" width="70%" @close="resetForm">
+                        <el-form :model="applicationForm" label-width="140px">
+                            <el-form-item label="申报类型" required>
+                                <el-select v-model="applicationForm.researchType" placeholder="请选择" style="width: 100%;" @change="onTypeChange">
+                                    <el-option label="SCI论文" :value="1"></el-option>
+                                    <el-option label="卓越期刊论文" :value="2"></el-option>
+                                    <el-option label="CCF会议论文" :value="3"></el-option>
+                                    <el-option label="科研奖励" :value="4"></el-option>
+                                    <el-option label="科研项目" :value="5"></el-option>
                                 </el-select>
                             </el-form-item>
-                            <el-form-item label="成果名称" required>
-                                <el-input v-model="researchForm.title"></el-input>
-                            </el-form-item>
-                            <el-form-item label="级别">
-                                <el-select v-model="researchForm.level" placeholder="请选择" style="width: 100%;">
-                                    <el-option label="国家级" :value="0"></el-option>
-                                    <el-option label="省部级" :value="1"></el-option>
-                                    <el-option label="其他" :value="2"></el-option>
-                                </el-select>
-                            </el-form-item>
-                            <el-form-item label="时间">
-                                <el-date-picker v-model="researchForm.awardDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
-                            </el-form-item>
-                            <el-form-item label="备注">
-                                <el-input type="textarea" v-model="researchForm.remark"></el-input>
-                            </el-form-item>
+                            
+                            <!-- SCI论文字段 -->
+                            <template v-if="applicationForm.researchType === 1">
+                                <el-form-item label="论文题目" required><el-input v-model="sciForm.paperTitle"></el-input></el-form-item>
+                                <el-form-item label="发表期刊" required><el-input v-model="sciForm.journalName"></el-input></el-form-item>
+                                <el-form-item label="作者信息" required><el-input v-model="sciForm.authorInfo" type="textarea"></el-input></el-form-item>
+                                <el-form-item label="通讯作者"><el-input v-model="sciForm.correspondingAuthor"></el-input></el-form-item>
+                                <el-row :gutter="20">
+                                    <el-col :span="12"><el-form-item label="SCI分区"><el-input v-model="sciForm.sciZone"></el-input></el-form-item></el-col>
+                                    <el-col :span="12"><el-form-item label="CCF分区"><el-input v-model="sciForm.ccfZone"></el-input></el-form-item></el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8"><el-form-item label="推荐期刊"><el-switch v-model="sciForm.isRecommendedJournal" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="卓越领军"><el-switch v-model="sciForm.isExcellentJournal" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="青大第一单位"><el-switch v-model="sciForm.isQingdaoFirstUnit" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8"><el-form-item label="高被引"><el-switch v-model="sciForm.isHighlyCited" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="ESI论文"><el-switch v-model="sciForm.isEsiPaper" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="积分"><el-input-number v-model="sciForm.points" :min="0" :precision="2"></el-input-number></el-form-item></el-col>
+                                </el-row>
+                                <el-form-item label="奖励级别"><el-input v-model="sciForm.awardLevel"></el-input></el-form-item>
+                                <el-form-item label="论文归属"><el-input v-model="sciForm.paperAffiliation"></el-input></el-form-item>
+                                <el-form-item label="备注"><el-input v-model="sciForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                            </template>
+                            
+                            <!-- 卓越期刊论文字段 -->
+                            <template v-if="applicationForm.researchType === 2">
+                                <el-form-item label="论文题目" required><el-input v-model="excellentForm.paperTitle"></el-input></el-form-item>
+                                <el-form-item label="发表期刊" required><el-input v-model="excellentForm.journalName"></el-input></el-form-item>
+                                <el-form-item label="作者信息" required><el-input v-model="excellentForm.authorInfo" type="textarea"></el-input></el-form-item>
+                                <el-form-item label="通讯作者"><el-input v-model="excellentForm.correspondingAuthor"></el-input></el-form-item>
+                                <el-form-item label="期刊类型"><el-input v-model="excellentForm.journalType" placeholder="领军/卓越等"></el-input></el-form-item>
+                                <el-row :gutter="20">
+                                    <el-col :span="12"><el-form-item label="青大第一单位"><el-switch v-model="excellentForm.isQingdaoFirstUnit" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                    <el-col :span="12"><el-form-item label="积分"><el-input-number v-model="excellentForm.points" :min="0" :precision="2"></el-input-number></el-form-item></el-col>
+                                </el-row>
+                                <el-form-item label="论文归属"><el-input v-model="excellentForm.paperAffiliation"></el-input></el-form-item>
+                                <el-form-item label="备注"><el-input v-model="excellentForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                            </template>
+                            
+                            <!-- CCF会议论文字段 -->
+                            <template v-if="applicationForm.researchType === 3">
+                                <el-form-item label="论文题目" required><el-input v-model="ccfForm.paperTitle"></el-input></el-form-item>
+                                <el-form-item label="会议名称" required><el-input v-model="ccfForm.conferenceName"></el-input></el-form-item>
+                                <el-form-item label="一作" required><el-input v-model="ccfForm.firstAuthor"></el-input></el-form-item>
+                                <el-form-item label="通信作者"><el-input v-model="ccfForm.correspondingAuthor"></el-input></el-form-item>
+                                <el-row :gutter="20">
+                                    <el-col :span="12"><el-form-item label="会议类型"><el-input v-model="ccfForm.conferenceType" placeholder="CCF A/B/C"></el-input></el-form-item></el-col>
+                                    <el-col :span="12"><el-form-item label="青大第一单位"><el-switch v-model="ccfForm.isQingdaoFirstUnit" active-value="1" inactive-value="0"></el-switch></el-form-item></el-col>
+                                </el-row>
+                                <el-form-item label="论文归属"><el-input v-model="ccfForm.paperAffiliation"></el-input></el-form-item>
+                                <el-form-item label="积分"><el-input-number v-model="ccfForm.points" :min="0" :precision="2"></el-input-number></el-form-item>
+                                <el-form-item label="备注"><el-input v-model="ccfForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                            </template>
+                            
+                            <!-- 科研奖励字段 -->
+                            <template v-if="applicationForm.researchType === 4">
+                                <el-form-item label="奖励名称" required><el-input v-model="awardForm.awardName"></el-input></el-form-item>
+                                <el-form-item label="成果名称" required><el-input v-model="awardForm.achievementName"></el-input></el-form-item>
+                                <el-form-item label="获奖级别" required><el-input v-model="awardForm.awardLevel"></el-input></el-form-item>
+                                <el-form-item label="获奖日期"><el-date-picker v-model="awardForm.awardDate" type="date" style="width: 100%;"></el-date-picker></el-form-item>
+                                <el-form-item label="所有完成人"><el-input v-model="awardForm.allWinners" type="textarea"></el-input></el-form-item>
+                                <el-form-item label="发证机关"><el-input v-model="awardForm.issuingAuthority"></el-input></el-form-item>
+                                <el-row :gutter="20">
+                                    <el-col :span="12"><el-form-item label="获奖等级"><el-input v-model="awardForm.awardGrade"></el-input></el-form-item></el-col>
+                                    <el-col :span="12"><el-form-item label="单位排名"><el-input-number v-model="awardForm.unitRanking" :min="1"></el-input-number></el-form-item></el-col>
+                                </el-row>
+                                <el-form-item label="证书号"><el-input v-model="awardForm.certificateNo"></el-input></el-form-item>
+                                <el-form-item label="主要成果"><el-input v-model="awardForm.mainAchievement" type="textarea"></el-input></el-form-item>
+                                <el-form-item label="备注"><el-input v-model="awardForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                            </template>
+                            
+                            <!-- 科研项目字段 -->
+                            <template v-if="applicationForm.researchType === 5">
+                                <el-form-item label="项目编号" required><el-input v-model="projectForm.projectNo"></el-input></el-form-item>
+                                <el-form-item label="项目名称" required><el-input v-model="projectForm.projectName"></el-input></el-form-item>
+                                <el-form-item label="项目来源" required><el-input v-model="projectForm.projectSource"></el-input></el-form-item>
+                                <el-form-item label="负责人" required><el-input v-model="projectForm.leader"></el-input></el-form-item>
+                                <el-row :gutter="20">
+                                    <el-col :span="8"><el-form-item label="签署年度"><el-input-number v-model="projectForm.signYear" :min="2000" :max="2100"></el-input-number></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="合同金额"><el-input-number v-model="projectForm.contractAmount" :min="0" :precision="2"></el-input-number></el-form-item></el-col>
+                                    <el-col :span="8"><el-form-item label="到账金额"><el-input-number v-model="projectForm.receivedAmount" :min="0" :precision="2"></el-input-number></el-form-item></el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="12"><el-form-item label="签订日期"><el-date-picker v-model="projectForm.contractStartDate" type="date" style="width: 100%;"></el-date-picker></el-form-item></el-col>
+                                    <el-col :span="12"><el-form-item label="截止日期"><el-date-picker v-model="projectForm.contractEndDate" type="date" style="width: 100%;"></el-date-picker></el-form-item></el-col>
+                                </el-row>
+                                <el-form-item label="备注"><el-input v-model="projectForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                            </template>
                         </el-form>
                         <span slot="footer">
-                            <el-button @click="researchDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="saveResearch">保存</el-button>
+                            <el-button @click="submitDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitApplication">提交申报</el-button>
+                        </span>
+                    </el-dialog>
+                    
+                    <!-- 详情对话框 -->
+                    <el-dialog title="申报详情" :visible.sync="detailDialogVisible" width="70%">
+                        <div v-if="applicationDetail">
+                            <el-descriptions :column="2" border>
+                                <el-descriptions-item label="标题">{{ applicationDetail.application.title }}</el-descriptions-item>
+                                <el-descriptions-item label="类型">{{ applicationDetail.typeName }}</el-descriptions-item>
+                                <el-descriptions-item label="状态">{{ applicationDetail.statusName }}</el-descriptions-item>
+                                <el-descriptions-item label="提交时间">{{ applicationDetail.application.createTime }}</el-descriptions-item>
+                                <el-descriptions-item label="审核备注" :span="2">{{ applicationDetail.application.auditRemark || '无' }}</el-descriptions-item>
+                            </el-descriptions>
+                            <h4 style="margin-top: 20px;">详细信息</h4>
+                            <pre style="background: #f5f7fa; padding: 15px; border-radius: 4px; overflow: auto;">{{ JSON.stringify(applicationDetail.detail, null, 2) }}</pre>
+                        </div>
+                    </el-dialog>
+                </div>
+
+                <!-- 科研审核（仅教务老师） -->
+                <div v-if="currentPage === 'research-audit'" class="card">
+                    <h2>科研申报审核</h2>
+                    <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
+                    <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
+                    <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="title" label="标题"></el-table-column>
+                        <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                        <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                        <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
+                        <el-table-column label="操作" width="200">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
+                                <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                    
+                    <!-- 详情对话框 -->
+                    <el-dialog title="申报详情" :visible.sync="researchDetailDialogVisible" width="70%">
+                        <div v-if="researchDetail">
+                            <el-descriptions :column="2" border>
+                                <el-descriptions-item label="标题">{{ researchDetail.application.title }}</el-descriptions-item>
+                                <el-descriptions-item label="类型">{{ researchDetail.typeName }}</el-descriptions-item>
+                                <el-descriptions-item label="提交时间">{{ researchDetail.application.createTime }}</el-descriptions-item>
+                                <el-descriptions-item label="状态">
+                                    <el-tag :type="getStatusTagType(researchDetail.application.status)">
+                                        {{ getStatusText(researchDetail.application.status) }}
+                                    </el-tag>
+                                </el-descriptions-item>
+                                <el-descriptions-item label="审核备注" :span="2" v-if="researchDetail.application.auditRemark">
+                                    {{ researchDetail.application.auditRemark }}
+                                </el-descriptions-item>
+                            </el-descriptions>
+                            
+                            <h4 style="margin-top: 20px;">详细信息</h4>
+                            <el-descriptions :column="2" border>
+                                <!-- SCI论文 -->
+                                <template v-if="researchDetail.detail.paperTitle && researchDetail.detail.journalName">
+                                    <el-descriptions-item label="论文题目" :span="2">{{ researchDetail.detail.paperTitle }}</el-descriptions-item>
+                                    <el-descriptions-item label="发表期刊" :span="2">{{ researchDetail.detail.journalName }}</el-descriptions-item>
+                                    <el-descriptions-item label="作者信息" :span="2">{{ researchDetail.detail.authorInfo }}</el-descriptions-item>
+                                    <el-descriptions-item label="通讯作者">{{ researchDetail.detail.correspondingAuthor || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="SCI分区">{{ researchDetail.detail.sciZone || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="CCF分区">{{ researchDetail.detail.ccfZone || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="是否推荐期刊">{{ researchDetail.detail.isRecommendedJournal === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="是否卓越领军期刊">{{ researchDetail.detail.isExcellentJournal === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="青大是否第一单位">{{ researchDetail.detail.isQingdaoFirstUnit === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="是否高被引">{{ researchDetail.detail.isHighlyCited === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="是否ESI论文">{{ researchDetail.detail.isEsiPaper === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="奖励级别">{{ researchDetail.detail.awardLevel || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="论文归属">{{ researchDetail.detail.paperAffiliation || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="积分">{{ researchDetail.detail.points || 0 }}</el-descriptions-item>
+                                </template>
+                                
+                                <!-- 卓越期刊论文 -->
+                                <template v-else-if="researchDetail.detail.journalType">
+                                    <el-descriptions-item label="论文题目" :span="2">{{ researchDetail.detail.paperTitle }}</el-descriptions-item>
+                                    <el-descriptions-item label="发表期刊" :span="2">{{ researchDetail.detail.journalName }}</el-descriptions-item>
+                                    <el-descriptions-item label="作者信息" :span="2">{{ researchDetail.detail.authorInfo }}</el-descriptions-item>
+                                    <el-descriptions-item label="通讯作者">{{ researchDetail.detail.correspondingAuthor || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="期刊类型">{{ researchDetail.detail.journalType }}</el-descriptions-item>
+                                    <el-descriptions-item label="青大是否第一单位">{{ researchDetail.detail.isQingdaoFirstUnit === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="论文归属">{{ researchDetail.detail.paperAffiliation || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="积分">{{ researchDetail.detail.points || 0 }}</el-descriptions-item>
+                                </template>
+                                
+                                <!-- CCF会议论文 -->
+                                <template v-else-if="researchDetail.detail.conferenceName">
+                                    <el-descriptions-item label="论文题目" :span="2">{{ researchDetail.detail.paperTitle }}</el-descriptions-item>
+                                    <el-descriptions-item label="会议名称" :span="2">{{ researchDetail.detail.conferenceName }}</el-descriptions-item>
+                                    <el-descriptions-item label="一作">{{ researchDetail.detail.firstAuthor }}</el-descriptions-item>
+                                    <el-descriptions-item label="通信作者">{{ researchDetail.detail.correspondingAuthor || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="会议类型">{{ researchDetail.detail.conferenceType || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="青大是否第一单位">{{ researchDetail.detail.isQingdaoFirstUnit === '1' ? '是' : '否' }}</el-descriptions-item>
+                                    <el-descriptions-item label="论文归属">{{ researchDetail.detail.paperAffiliation || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="积分">{{ researchDetail.detail.points || 0 }}</el-descriptions-item>
+                                </template>
+                                
+                                <!-- 科研奖励 -->
+                                <template v-else-if="researchDetail.detail.awardName">
+                                    <el-descriptions-item label="奖励名称" :span="2">{{ researchDetail.detail.awardName }}</el-descriptions-item>
+                                    <el-descriptions-item label="成果名称" :span="2">{{ researchDetail.detail.achievementName }}</el-descriptions-item>
+                                    <el-descriptions-item label="获奖级别">{{ researchDetail.detail.awardLevel }}</el-descriptions-item>
+                                    <el-descriptions-item label="获奖等级">{{ researchDetail.detail.awardGrade || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="获奖日期">{{ researchDetail.detail.awardDate || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="发证机关">{{ researchDetail.detail.issuingAuthority || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="所有完成人" :span="2">{{ researchDetail.detail.allWinners || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="单位排名">{{ researchDetail.detail.unitRanking || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="证书号">{{ researchDetail.detail.certificateNo || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="主要成果" :span="2">{{ researchDetail.detail.mainAchievement || '无' }}</el-descriptions-item>
+                                </template>
+                                
+                                <!-- 科研项目 -->
+                                <template v-else-if="researchDetail.detail.projectNo">
+                                    <el-descriptions-item label="项目编号">{{ researchDetail.detail.projectNo }}</el-descriptions-item>
+                                    <el-descriptions-item label="项目名称" :span="2">{{ researchDetail.detail.projectName }}</el-descriptions-item>
+                                    <el-descriptions-item label="项目来源">{{ researchDetail.detail.projectSource }}</el-descriptions-item>
+                                    <el-descriptions-item label="负责人">{{ researchDetail.detail.leader }}</el-descriptions-item>
+                                    <el-descriptions-item label="签署年度">{{ researchDetail.detail.signYear || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="合同签订日期">{{ researchDetail.detail.contractStartDate || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="合同截止日期">{{ researchDetail.detail.contractEndDate || '无' }}</el-descriptions-item>
+                                    <el-descriptions-item label="合同金额">{{ researchDetail.detail.contractAmount || 0 }} 元</el-descriptions-item>
+                                    <el-descriptions-item label="到账金额">{{ researchDetail.detail.receivedAmount || 0 }} 元</el-descriptions-item>
+                                </template>
+                                
+                                <!-- 备注 -->
+                                <el-descriptions-item label="备注" :span="2" v-if="researchDetail.detail.remark">
+                                    {{ researchDetail.detail.remark }}
+                                </el-descriptions-item>
+                            </el-descriptions>
+                        </div>
+                    </el-dialog>
+                    
+                    <!-- 拒绝原因对话框 -->
+                    <el-dialog title="拒绝原因" :visible.sync="rejectResearchDialogVisible" width="500px">
+                        <el-input type="textarea" v-model="rejectResearchReason" placeholder="请输入拒绝原因" :rows="4"></el-input>
+                        <span slot="footer">
+                            <el-button @click="rejectResearchDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="confirmRejectResearch">确认拒绝</el-button>
                         </span>
                     </el-dialog>
                 </div>
@@ -271,16 +555,37 @@
                 currentPage: 'dashboard',
                 activeMenu: 'dashboard',
                 currentUser: {},
+                userPerms: [],
                 myCourses: [],
                 scores: [],
                 courseStudents: [],
-                researchList: [],
+                myApplications: [],
                 scoreInputVisible: false,
-                researchDialogVisible: false,
+                submitDialogVisible: false,
+                detailDialogVisible: false,
                 scoreCourseId: null,
                 studentCourseId: null,
                 scoreInputList: [],
-                researchForm: { title: '', researchType: 0, level: 0, awardDate: '', remark: '' },
+                applicationForm: { researchType: 1 },
+                sciForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '' },
+                excellentForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' },
+                ccfForm: { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' },
+                awardForm: { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '' },
+                projectForm: { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '' },
+                applicationDetail: null,
+                pendingResearch: [],
+                researchDetailDialogVisible: false,
+                rejectResearchDialogVisible: false,
+                researchDetail: null,
+                currentResearchAudit: null,
+                rejectResearchReason: '',
+                addCourseVisible: false,
+                editCourseVisible: false,
+                courseSearchKeyword: '',
+                availableCourses: [],
+                selectedCourses: [],
+                teacherList: [],
+                editingCourse: null,
                 totalStudents: 0,
                 pendingScores: 0
             },
@@ -288,37 +593,221 @@
                 const user = localStorage.getItem('user');
                 if (user) {
                     this.currentUser = JSON.parse(user);
+                    this.loadUserPermissions();
                     this.loadMyCourses();
-                    this.loadResearchList(); // 初始化加载科研列表
+                    this.loadMyApplications();
+                    // 延迟加载学生名单，确保课程列表已加载完成
+                    setTimeout(() => {
+                        if (this.myCourses && this.myCourses.length > 0) {
+                            this.studentCourseId = this.myCourses[0].courseId;
+                            this.$nextTick(() => {
+                                this.loadCourseStudents();
+                            });
+                        }
+                    }, 800);
                 } else {
                     this.$message.error('未登录，请先登录');
                     window.location.href = '/index.html';
                 }
             },
             methods: {
+                hasPermission(perm) {
+                    return this.userPerms.includes(perm);
+                },
+                async loadUserPermissions() {
+                    try {
+                        const response = await axios.get(`/sys/user/permissions/${this.currentUser.userId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.userPerms = response.data.data.perms || [];
+                        }
+                    } catch (error) {
+                        console.error('加载权限失败', error);
+                        this.userPerms = ['academic:course:list', 'academic:score:view', 'academic:score:input', 'student:list', 'research:view', 'research:add', 'research:edit', 'schedule:view', 'notice:view', 'academic:course:release'];
+                    }
+                },
                 navigateTo(page) {
                     this.currentPage = page;
                     this.activeMenu = page;
                     if (page === 'mycourse') {
                         this.loadMyCourses();
                     } else if (page === 'research') {
-                        this.loadResearchList();
+                        this.loadMyApplications();
+                    } else if (page === 'research-audit') {
+                        this.loadPendingResearch();
                     }
                 },
                 async loadMyCourses() {
                     try {
-                        const response = await axios.get('/edu/course/list', {
-                            params: { teacherId: this.currentUser.userId },
-                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-                        });
+                        let response;
+                        // 教务管理员查看所有已发布课程，普通教师查看自己授课的课程
+                        if (this.hasPermission('academic:course:release')) {
+                            response = await axios.get('/edu/course-release/list', {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        } else {
+                            response = await axios.get('/edu/teacher/courses', {
+                                params: { teacherId: this.currentUser.userId },
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        }
+                        
                         if (response.data.code === 200) {
                             this.myCourses = response.data.data || [];
                             this.totalStudents = this.myCourses.reduce((sum, c) => sum + (c.selectedCount || 0), 0);
-                            this.pendingScores = this.myCourses.length; // TODO: 实际应查询未录入成绩的课程数
+                            this.pendingScores = this.myCourses.length;
                         }
                     } catch (error) {
                         console.error('加载课程失败', error);
                     }
+                },
+                showAddCourseDialog() {
+                    this.courseSearchKeyword = '';
+                    this.selectedCourses = [];
+                    this.addCourseVisible = true;
+                    this.loadTeacherList();
+                    this.searchAvailableCourses();
+                },
+                async loadTeacherList() {
+                    try {
+                        const response = await axios.get('/sys/user/list', {
+                            params: { userType: '1' },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            const allUsers = response.data.data || [];
+                            this.teacherList = allUsers.filter(user => user.userType === '1');
+                        }
+                    } catch (error) {
+                        console.error('加载教师列表失败', error);
+                    }
+                },
+                async searchAvailableCourses() {
+                    try {
+                        const response = await axios.get('/edu/course/list', {
+                            params: { keyword: this.courseSearchKeyword },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            // 教务管理员可以看到所有课程（包括已发布的）
+                            this.availableCourses = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载课程列表失败', error);
+                        this.$message.error('加载课程列表失败');
+                    }
+                },
+                handleCourseSelection(selection) {
+                    this.selectedCourses = selection;
+                },
+                async confirmAddCourses() {
+                    if (this.selectedCourses.length === 0) {
+                        this.$message.warning('请选择课程');
+                        return;
+                    }
+                    
+                    const hasUnselectedTeacher = this.selectedCourses.some(c => !c.selectedTeacherId);
+                    if (hasUnselectedTeacher) {
+                        this.$message.error('请为每门课程选择授课教师');
+                        return;
+                    }
+                    
+                    try {
+                        const promises = this.selectedCourses.map(course => {
+                            return axios.post('/edu/course-release', {
+                                courseId: course.courseId,
+                                teacherId: course.selectedTeacherId,
+                                semesterId: 1,
+                                capacity: course.capacity
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        });
+                        const results = await Promise.all(promises);
+                        
+                        // 统计成功和失败的数量
+                        let successCount = 0;
+                        let failMessages = [];
+                        
+                        results.forEach((r, index) => {
+                            if (r.data.code === 200) {
+                                successCount++;
+                            } else {
+                                const courseName = this.selectedCourses[index].courseName;
+                                failMessages.push(`${courseName}: ${r.data.message}`);
+                            }
+                        });
+                        
+                        if (successCount > 0) {
+                            this.$message.success(`成功发布${successCount}门课程`);
+                        }
+                        
+                        if (failMessages.length > 0) {
+                            this.$message.warning(failMessages.join('\n'));
+                        }
+                        
+                        this.addCourseVisible = false;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await this.loadMyCourses();
+                    } catch (error) {
+                        console.error('发布课程失败', error);
+                        this.$message.error(error.response?.data?.message || '发布课程失败');
+                    }
+                },
+                editReleasedCourse(course) {
+                    this.editingCourse = {
+                        releaseId: course.releaseId,
+                        courseId: course.courseId,
+                        courseName: course.courseName,
+                        teacherId: course.teacherId,
+                        capacity: course.capacity
+                    };
+                    this.loadTeacherList();
+                    this.editCourseVisible = true;
+                },
+                async confirmEditCourse() {
+                    if (!this.editingCourse.teacherId) {
+                        this.$message.error('请选择授课教师');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await axios.put('/edu/course-release', {
+                            releaseId: this.editingCourse.releaseId,
+                            teacherId: this.editingCourse.teacherId,
+                            capacity: this.editingCourse.capacity
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success('修改成功');
+                            this.editCourseVisible = false;
+                            this.loadMyCourses();
+                        }
+                    } catch (error) {
+                        this.$message.error(error.response?.data?.message || '修改失败');
+                    }
+                },
+                async removeMyCourse(course) {
+                    this.$confirm(`确定要删除 ${course.courseName} 吗？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.delete(`/edu/course-release/${course.releaseId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('删除成功');
+                                this.loadMyCourses();
+                            }
+                        } catch (error) {
+                            this.$message.error(error.response?.data?.message || '删除失败');
+                        }
+                    }).catch(() => {});
                 },
                 viewCourseStudents(course) {
                     this.studentCourseId = course.courseId;
@@ -454,11 +943,48 @@
                         this.$message.warning('请选择课程');
                         return;
                     }
-                    // TODO: 调用后端接口获取选课学生
-                    this.courseStudents = [
-                        { studentNo: '2024001', studentName: '张三', className: '计算机1班', phone: '13800138001', email: 'zhangsan@example.com' },
-                        { studentNo: '2024002', studentName: '李四', className: '计算机1班', phone: '13800138002', email: 'lisi@example.com' }
-                    ];
+                    
+                    const loading = this.$loading({
+                        lock: true,
+                        text: '正在加载学生名单...',
+                        spinner: 'el-icon-loading',
+                        background: 'rgba(0, 0, 0, 0.7)'
+                    });
+                    
+                    try {
+                        const response = await axios.get(`/edu/teacher/course-students/${this.studentCourseId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        
+                        console.log('学生名单接口响应:', response.data);
+                        
+                        if (response.data.code === 200) {
+                            const students = response.data.data || [];
+                            console.log('学生数据:', students);
+                            console.log('第一条学生数据:', students[0]);
+                            
+                            // 确保数据正确赋值
+                            this.courseStudents = students;
+                            
+                            // 强制触发Vue更新
+                            this.$forceUpdate();
+                            
+                            if (this.courseStudents.length === 0) {
+                                this.$message.info('该课程暂无选课学生');
+                            } else {
+                                this.$message.success(`成功加载 ${this.courseStudents.length} 名学生`);
+                            }
+                        } else {
+                            this.$message.error(response.data.message || '加载失败');
+                            this.courseStudents = [];
+                        }
+                    } catch (error) {
+                        console.error('加载学生名单失败', error);
+                        this.$message.error(error.response?.data?.message || '加载学生名单失败');
+                        this.courseStudents = [];
+                    } finally {
+                        loading.close();
+                    }
                 },
                 exportStudentList() {
                     if (!this.studentCourseId || this.courseStudents.length === 0) {
@@ -466,9 +992,9 @@
                         return;
                     }
                     // CSV导出
-                    let csv = '学号,姓名,班级,手机号,邮箱\n';
+                    let csv = '学号,姓名,手机号,邮箱\n';
                     this.courseStudents.forEach(s => {
-                        csv += `${s.studentNo},${s.studentName},${s.className},${s.phone},${s.email}\n`;
+                        csv += `${s.studentNo},${s.realName},${s.phone},${s.email}\n`;
                     });
                     
                     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -477,6 +1003,14 @@
                     link.download = `学生名单_${new Date().getTime()}.csv`;
                     link.click();
                     this.$message.success('导出成功');
+                },
+                refreshStudentData() {
+                    this.$message.info('正在刷新学生名单...');
+                    this.loadCourseStudents();
+                },
+                refreshResearchData() {
+                    this.$message.info('正在刷新科研数据...');
+                    this.loadResearchList();
                 },
                 showResearchDialog() {
                     this.researchForm = { title: '', researchType: 0, level: 0, awardDate: '', remark: '' };
@@ -499,13 +1033,28 @@
                             level: String(this.researchForm.level),
                             status: '0'
                         };
-                        const response = await axios.post('/edu/research', data, {
-                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-                        });
+                        
+                        let response;
+                        // 判断是新增还是更新
+                        if (this.researchForm.researchId) {
+                            // 更新
+                            response = await axios.put('/edu/research', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        } else {
+                            // 新增
+                            response = await axios.post('/edu/research', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        }
+                        
                         if (response.data.code === 200) {
                             this.$message.success('保存成功');
                             this.researchDialogVisible = false;
-                            this.loadResearchList();
+                            // 延迟刷新，确保数据库已保存
+                            setTimeout(() => {
+                                this.loadResearchList();
+                            }, 300);
                         } else {
                             this.$message.error(response.data.message || '保存失败');
                         }
@@ -515,16 +1064,31 @@
                     }
                 },
                 async loadResearchList() {
+                    const loading = this.$loading({
+                        lock: true,
+                        text: '正在加载科研数据...',
+                        spinner: 'el-icon-loading',
+                        background: 'rgba(0, 0, 0, 0.7)'
+                    });
+                    
                     try {
                         const response = await axios.get('/edu/research/list', {
                             params: { teacherId: this.currentUser.userId },
                             headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
                         });
+                        
                         if (response.data.code === 200) {
                             this.researchList = response.data.data || [];
+                            // 不在每次刷新时都显示提示
+                        } else {
+                            this.researchList = [];
                         }
                     } catch (error) {
                         console.error('加载科研列表失败', error);
+                        this.$message.error('加载科研列表失败');
+                        this.researchList = [];
+                    } finally {
+                        loading.close();
                     }
                 },
                 deleteResearch(researchId) {
@@ -551,6 +1115,199 @@
                     localStorage.removeItem('user');
                     this.$message.success('已退出登录');
                     window.location.href = '/index.html';
+                },
+                // 科研申报相关方法
+                showSubmitDialog() {
+                    this.submitDialogVisible = true;
+                    this.applicationForm.researchType = 1;
+                },
+                onTypeChange() {
+                    // 类型改变时重置表单
+                },
+                resetForm() {
+                    this.applicationForm = { researchType: 1 };
+                    this.sciForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '' };
+                    this.excellentForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' };
+                    this.ccfForm = { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' };
+                    this.awardForm = { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '' };
+                    this.projectForm = { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '' };
+                },
+                async submitApplication() {
+                    try {
+                        let detailData = {};
+                        const type = this.applicationForm.researchType;
+                        
+                        if (type === 1) {
+                            if (!this.sciForm.paperTitle || !this.sciForm.journalName || !this.sciForm.authorInfo) {
+                                this.$message.error('请填写必填项');
+                                return;
+                            }
+                            detailData = { ...this.sciForm, title: this.sciForm.paperTitle };
+                        } else if (type === 2) {
+                            if (!this.excellentForm.paperTitle || !this.excellentForm.journalName || !this.excellentForm.authorInfo) {
+                                this.$message.error('请填写必填项');
+                                return;
+                            }
+                            detailData = { ...this.excellentForm, title: this.excellentForm.paperTitle };
+                        } else if (type === 3) {
+                            if (!this.ccfForm.paperTitle || !this.ccfForm.conferenceName || !this.ccfForm.firstAuthor) {
+                                this.$message.error('请填写必填项');
+                                return;
+                            }
+                            detailData = { ...this.ccfForm, title: this.ccfForm.paperTitle };
+                        } else if (type === 4) {
+                            if (!this.awardForm.awardName || !this.awardForm.achievementName || !this.awardForm.awardLevel) {
+                                this.$message.error('请填写必填项');
+                                return;
+                            }
+                            detailData = { ...this.awardForm, title: this.awardForm.awardName };
+                        } else if (type === 5) {
+                            if (!this.projectForm.projectNo || !this.projectForm.projectName || !this.projectForm.projectSource || !this.projectForm.leader) {
+                                this.$message.error('请填写必填项');
+                                return;
+                            }
+                            detailData = { ...this.projectForm, title: this.projectForm.projectName };
+                        }
+                        
+                        const response = await axios.post('/edu/research/submit', {
+                            researchType: type,
+                            detailData: detailData
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success('提交成功，等待审核');
+                            this.submitDialogVisible = false;
+                            this.loadMyApplications();
+                        } else {
+                            this.$message.error(response.data.message || '提交失败');
+                        }
+                    } catch (error) {
+                        console.error('提交错误:', error);
+                        this.$message.error(error.response?.data?.message || '提交失败');
+                    }
+                },
+                async loadMyApplications() {
+                    try {
+                        const response = await axios.get('/edu/research/my-applications', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.myApplications = response.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载申请列表失败', error);
+                    }
+                },
+                async viewApplicationDetail(applicationId) {
+                    try {
+                        const response = await axios.get(`/edu/research/detail/${applicationId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.applicationDetail = response.data.data;
+                            this.detailDialogVisible = true;
+                        }
+                    } catch (error) {
+                        console.error('加载详情失败', error);
+                        this.$message.error('加载详情失败');
+                    }
+                },
+                getStatusTagType(status) {
+                    const types = { '0': 'warning', '1': 'success', '2': 'danger' };
+                    return types[status] || 'info';
+                },
+                getStatusText(status) {
+                    const texts = { '0': '待审核', '1': '已通过', '2': '已拒绝' };
+                    return texts[status] || '未知';
+                },
+                // 科研审核相关方法（仅教务老师）
+                async loadPendingResearch() {
+                    try {
+                        const res = await axios.get('/edu/research/pending-audit', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.pendingResearch = res.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载待审核列表失败', error);
+                        this.$message.error('加载失败');
+                    }
+                },
+                async viewResearchDetail(applicationId) {
+                    try {
+                        const res = await axios.get(`/edu/research/detail/${applicationId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.researchDetail = res.data.data;
+                            console.log('科研详情数据:', this.researchDetail);
+                            console.log('详情对象:', this.researchDetail.detail);
+                            this.researchDetailDialogVisible = true;
+                        }
+                    } catch (error) {
+                        console.error('加载详情失败', error);
+                        this.$message.error('加载详情失败');
+                    }
+                },
+                auditResearch(row, status) {
+                    const action = status === '1' ? '通过' : '拒绝';
+                    this.$confirm(`确认${action}该申请？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const res = await axios.post('/edu/research/audit', {
+                                applicationId: row.applicationId,
+                                status: status,
+                                auditRemark: status === '1' ? '审核通过' : ''
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (res.data.code === 200) {
+                                this.$message.success(`${action}成功`);
+                                this.loadPendingResearch();
+                            } else {
+                                this.$message.error(res.data.message || `${action}失败`);
+                            }
+                        } catch (error) {
+                            console.error('审核失败', error);
+                            this.$message.error(error.response?.data?.message || '审核失败');
+                        }
+                    }).catch(() => {});
+                },
+                showRejectResearchDialog(row) {
+                    this.currentResearchAudit = row;
+                    this.rejectResearchReason = '';
+                    this.rejectResearchDialogVisible = true;
+                },
+                async confirmRejectResearch() {
+                    if (!this.rejectResearchReason.trim()) {
+                        this.$message.warning('请输入拒绝原因');
+                        return;
+                    }
+                    try {
+                        const res = await axios.post('/edu/research/audit', {
+                            applicationId: this.currentResearchAudit.applicationId,
+                            status: '2',
+                            auditRemark: this.rejectResearchReason
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.$message.success('已拒绝');
+                            this.rejectResearchDialogVisible = false;
+                            this.loadPendingResearch();
+                        } else {
+                            this.$message.error(res.data.message || '操作失败');
+                        }
+                    } catch (error) {
+                        console.error('拒绝失败', error);
+                        this.$message.error(error.response?.data?.message || '操作失败');
+                    }
                 }
             }
         });

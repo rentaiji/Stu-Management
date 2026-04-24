@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生选课系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logout-btn {
+            padding: 8px 20px;
+            background: #f56c6c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #e04e4e;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .course-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .course-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .course-card:hover {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .course-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .course-code {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .course-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .course-desc {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+
+        .capacity-bar {
+            background: #f0f0f0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .capacity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+
+        .capacity-text {
+            font-size: 12px;
+            color: #999;
+            text-align: right;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #f56c6c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e04e4e;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .my-course-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .my-course-info h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .my-course-info p {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .empty-tip {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+        }
+
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.success {
+            background: #67c23a;
+        }
+
+        .message.error {
+            background: #f56c6c;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 学生选课系统</h1>
+            <div class="user-info">
+                <span id="userName"></span>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="panel">
+                <h2>可选课程</h2>
+                <div id="courseList" class="course-list">
+                    <div class="empty-tip">加载中...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>我的选课</h2>
+                <div id="myCourses">
+                    <div class="empty-tip">暂无选课</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+        let currentUser = null;
+
+        window.onload = function() {
+            checkLogin();
+            loadCourses();
+            loadMyCourses();
+        };
+
+        function checkLogin() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = JSON.parse(userStr);
+            document.getElementById('userName').textContent = currentUser.realName || currentUser.userName;
+        }
+
+        async function loadCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/edu/course/available`);
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    renderCourses(result.data);
+                } else {
+                    showMessage('加载课程失败：' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('网络错误', 'error');
+            }
+        }
+
+        function renderCourses(courses) {
+            const container = document.getElementById('courseList');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无可选课程</div>';
+                return;
+            }
+
+            container.innerHTML = courses.map(course => {
+                const capacityPercent = course.capacity > 0 ? (course.selectedCount / course.capacity * 100) : 0;
+                const isFull = course.selectedCount >= course.capacity;
+                
+                return `
+                    <div class="course-card">
+                        <div class="course-header">
+                            <div>
+                                <div class="course-name">${course.courseName}</div>
+                                <div class="course-code">${course.courseCode}</div>
+                            </div>
+                            <button class="btn btn-primary" 
+                                    onclick="selectCourse(${course.courseId})"
+                                    ${isFull ? 'disabled' : ''}>
+                                ${isFull ? '已满' : '选课'}
+                            </button>
+                        </div>
+                        <div class="course-info">
+                            <div>学分：${course.credits}</div>
+                            <div>学时：${course.hours}</div>
+                            <div>类型：${getCourseTypeName(course.courseType)}</div>
+                        </div>
+                        ${course.description ? `<div class="course-desc">${course.description}</div>` : ''}
+                        ${course.classTime ? `<div class="course-desc">📅 上课时间：${course.classTime}</div>` : ''}
+                        ${course.classLocation ? `<div class="course-desc">📍 上课地点：${course.classLocation}</div>` : ''}
+                        <div class="capacity-bar">
+                            <div class="capacity-fill" style="width: ${capacityPercent}%"></div>
+                        </div>
+                        <div class="capacity-text">
+                            ${course.selectedCount}/${course.capacity} 人已选
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadMyCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/edu/course/my-courses`, {
+                    headers: {
+                        'Authorization': localStorage.getItem('token') || ''
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    renderMyCourses(result.data);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function renderMyCourses(courses) {
+            const container = document.getElementById('myCourses');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="empty-tip">暂无选课</div>';
+                return;
+            }
+
+            container.innerHTML = courses.map(course => `
+                <div class="my-course-item">
+                    <div class="my-course-info">
+                        <h3>${course.courseName}</h3>
+                        <p>${course.courseCode} | 学分：${course.credits} | 学时：${course.hours}</p>
+                    </div>
+                    <button class="btn btn-danger" onclick="dropCourse(${course.courseId})">退课</button>
+                </div>
+            `).join('');
+        }
+
+        async function selectCourse(courseId) {
+            if (!confirm('确认选修该课程？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/edu/course/select/${courseId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': localStorage.getItem('token') || ''
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    showMessage('选课成功！', 'success');
+                    loadCourses();
+                    loadMyCourses();
+                } else {
+                    showMessage(result.message || '选课失败', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('网络错误', 'error');
+            }
+        }
+
+        async function dropCourse(courseId) {
+            if (!confirm('确认退选该课程？')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/edu/course/drop/${courseId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': localStorage.getItem('token') || ''
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.code === 200) {
+                    showMessage('退课成功！', 'success');
+                    loadCourses();
+                    loadMyCourses();
+                } else {
+                    showMessage(result.message || '退课失败', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('网络错误', 'error');
+            }
+        }
+
+        function getCourseTypeName(type) {
+            const types = {
+                '0': '必修课',
+                '1': '选修课',
+                '2': '公选课'
+            };
+            return types[type] || '未知';
+        }
+
+        function showMessage(text, type) {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            document.body.appendChild(msg);
+            
+            setTimeout(() => {
+                msg.remove();
+            }, 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

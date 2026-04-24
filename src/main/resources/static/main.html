@@ -239,8 +239,8 @@
                                     </el-form-item>
                                 </el-col>
                             </el-row>
-                            <el-form-item label="密码" v-if="!studentForm.userId" required>
-                                <el-input type="password" v-model="studentForm.password" placeholder="至少6位"></el-input>
+                            <el-form-item label="重置密码">
+                                <el-input type="password" v-model="studentForm.password" placeholder="留空则不修改" clearable></el-input>
                             </el-form-item>
                         </el-form>
                         <span slot="footer">
@@ -695,6 +695,7 @@
                         this.$message.error('请选择政治面貌');
                         return;
                     }
+                    // 新增时必须输入密码
                     if (!this.studentForm.userId && !this.studentForm.password) {
                         this.$message.error('请输入密码');
                         return;
@@ -721,7 +722,8 @@
                         }
                     } catch (error) {
                         console.error('保存学生信息错误:', error);
-                        this.$message.error(error.response?.data?.message || '保存失败');
+                        const errorMsg = error.response?.data?.message || '保存失败';
+                        this.$message.error(errorMsg);
                     }
                 },
                 showTeacherDialog() {

@@ -50,6 +50,14 @@
                         <i class="el-icon-circle-check"></i>
                         <span>选课中心</span>
                     </el-menu-item>
+                    <el-menu-item index="schedule">
+                        <i class="el-icon-time"></i>
+                        <span>课表查询</span>
+                    </el-menu-item>
+                    <el-menu-item index="profile">
+                        <i class="el-icon-setting"></i>
+                        <span>信息维护</span>
+                    </el-menu-item>
                     <el-menu-item index="competition">
                         <i class="el-icon-trophy"></i>
                         <span>竞赛申报</span>
@@ -65,13 +73,93 @@
                 
                 <!-- 个人信息 -->
                 <div v-if="currentPage === 'myinfo'" class="card">
-                    <h2>个人信息</h2>
-                    <el-descriptions title="基本信息" :column="2" border>
-                        <el-descriptions-item label="学号">{{ currentUser.userName }}</el-descriptions-item>
-                        <el-descriptions-item label="姓名">{{ currentUser.realName }}</el-descriptions-item>
-                        <el-descriptions-item label="手机号">{{ currentUser.phone || '-' }}</el-descriptions-item>
-                        <el-descriptions-item label="邮箱">{{ currentUser.email || '-' }}</el-descriptions-item>
-                    </el-descriptions>
+                    <h2 style="margin-bottom: 20px;">个人信息</h2>
+                    
+                    <!-- 基本信息卡片 -->
+                    <el-card shadow="hover" style="margin-bottom: 20px;">
+                        <div slot="header">
+                            <span><i class="el-icon-user-solid"></i> 基本信息</span>
+                        </div>
+                        <el-descriptions :column="3" border size="medium">
+                            <el-descriptions-item label="学号">{{ studentProfile.studentNo || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="姓名">{{ studentProfile.realName || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="性别">
+                                <span v-if="studentProfile.gender === '0'">男</span>
+                                <span v-else-if="studentProfile.gender === '1'">女</span>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="出生日期">{{ studentProfile.birthDate || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="身份证号">{{ studentProfile.idCard || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="民族">{{ studentProfile.nation || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="政治面貌">
+                                <span v-if="studentProfile.politicalStatus === 0">群众</span>
+                                <span v-else-if="studentProfile.politicalStatus === 1">共青团员</span>
+                                <span v-else-if="studentProfile.politicalStatus === 2">中共党员</span>
+                                <span v-else-if="studentProfile.politicalStatus === 3">中共预备党员</span>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="生源地">{{ studentProfile.nativePlace || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="出生地">{{ studentProfile.birthPlace || '-' }}</el-descriptions-item>
+                        </el-descriptions>
+                    </el-card>
+
+                    <!-- 学籍信息卡片 -->
+                    <el-card shadow="hover" style="margin-bottom: 20px;">
+                        <div slot="header">
+                            <span><i class="el-icon-s-cooperation"></i> 学籍信息</span>
+                        </div>
+                        <el-descriptions :column="3" border size="medium">
+                            <el-descriptions-item label="入学年份">{{ studentProfile.entranceYear || studentProfile.enrollmentYear || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="学历层次">
+                                <span v-if="studentProfile.educationLevel === '0'">本科</span>
+                                <span v-else-if="studentProfile.educationLevel === '1'">硕士</span>
+                                <span v-else-if="studentProfile.educationLevel === '2'">博士</span>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="学制">{{ studentProfile.studyLength ? studentProfile.studyLength + '年' : '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="入学日期">{{ studentProfile.entryDate || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="预计毕业日期">{{ studentProfile.graduateDate || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="学习形式">
+                                <span v-if="studentProfile.studyMode === 0">全日制</span>
+                                <span v-else-if="studentProfile.studyMode === 1">非全日制</span>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="学籍状态">
+                                <el-tag v-if="studentProfile.studentStatus === '0' || studentProfile.studentStatus === 0" type="success">在读</el-tag>
+                                <el-tag v-else-if="studentProfile.studentStatus === '1' || studentProfile.studentStatus === 1" type="warning">休学</el-tag>
+                                <el-tag v-else-if="studentProfile.studentStatus === '2' || studentProfile.studentStatus === 2" type="danger">退学</el-tag>
+                                <el-tag v-else-if="studentProfile.studentStatus === '3' || studentProfile.studentStatus === 3" type="info">毕业</el-tag>
+                                <span v-else>-</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="年级ID">{{ studentProfile.gradeId || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="班级ID">{{ studentProfile.classId || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="专业ID">{{ studentProfile.majorId || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="院系ID">{{ studentProfile.deptId || '-' }}</el-descriptions-item>
+                        </el-descriptions>
+                    </el-card>
+
+                    <!-- 紧急联系卡片 -->
+                    <el-card shadow="hover" style="margin-bottom: 20px;">
+                        <div slot="header">
+                            <span><i class="el-icon-phone-outline"></i> 紧急联系人</span>
+                        </div>
+                        <el-descriptions :column="2" border size="medium">
+                            <el-descriptions-item label="紧急联系人">{{ studentProfile.emergencyContact || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="联系电话">{{ studentProfile.emergencyPhone || '-' }}</el-descriptions-item>
+                        </el-descriptions>
+                    </el-card>
+
+                    <!-- 联系方式卡片 -->
+                    <el-card shadow="hover">
+                        <div slot="header">
+                            <span><i class="el-icon-phone"></i> 联系方式与地址</span>
+                        </div>
+                        <el-descriptions :column="2" border size="medium">
+                            <el-descriptions-item label="手机号">{{ studentProfile.phone || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="邮箱">{{ studentProfile.email || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="家庭地址" :span="2">{{ studentProfile.homeAddress || '-' }}</el-descriptions-item>
+                        </el-descriptions>
+                    </el-card>
                 </div>
 
                 <!-- 我的课程 -->
@@ -85,8 +173,14 @@
                         <el-table-column prop="teacherName" label="授课教师"></el-table-column>
                         <el-table-column prop="selectStatus" label="状态">
                             <template slot-scope="scope">
-                                <span v-if="scope.row.selectStatus === '0'">已选</span>
-                                <span v-else-if="scope.row.selectStatus === '1'">退课</span>
+                                <span v-if="scope.row.selectStatus === '1'">已选</span>
+                                <span v-else-if="scope.row.selectStatus === '0'">退课</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="200">
+                            <template slot-scope="scope">
+                                <el-button size="mini" type="danger" @click="dropCourse(scope.row)" v-if="scope.row.selectStatus === '1'">退选</el-button>
+                                <span v-else style="color: #999;">已选</span>
                             </template>
                         </el-table-column>
                     </el-table>
@@ -127,21 +221,27 @@
                     <div style="margin-bottom: 10px;">
                         <el-alert title="选课规则：每学期最多选修28学分" type="info" :closable="false"></el-alert>
                     </div>
-                    <el-table :data="courses" style="width: 100%; margin-top: 10px;">
-                        <el-table-column prop="courseCode" label="课程代码"></el-table-column>
-                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
-                        <el-table-column prop="credits" label="学分"></el-table-column>
-                        <el-table-column prop="hours" label="学时"></el-table-column>
-                        <el-table-column prop="teacherName" label="授课教师"></el-table-column>
-                        <el-table-column prop="capacity" label="容量"></el-table-column>
-                        <el-table-column prop="selectedCount" label="已选人数">
+                    <el-table :data="uniqueCourses" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="courseCode" label="课程代码" width="100"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称" min-width="150"></el-table-column>
+                        <el-table-column prop="teacherName" label="授课教师" width="100"></el-table-column>
+                        <el-table-column prop="credits" label="学分" width="60"></el-table-column>
+                        <el-table-column prop="hours" label="学时" width="60"></el-table-column>
+                        <el-table-column prop="classTime" label="上课时间" width="120"></el-table-column>
+                        <el-table-column prop="classLocation" label="上课地点" width="100"></el-table-column>
+                        <el-table-column label="容量/已选" width="100">
                             <template slot-scope="scope">
                                 {{ scope.row.selectedCount || 0 }}/{{ scope.row.capacity }}
                             </template>
                         </el-table-column>
-                        <el-table-column label="操作" width="120">
+                        <el-table-column label="操作" width="100" fixed="right">
                             <template slot-scope="scope">
-                                <el-button size="mini" type="primary" @click="selectCourse(scope.row)" :disabled="isCourseSelected(scope.row.courseId)">{{ isCourseSelected(scope.row.courseId) ? '已选' : '选课' }}</el-button>
+                                <el-button v-if="!isCourseSelected(scope.row.courseId)" size="mini" type="primary" @click="selectCourse(scope.row)" :disabled="scope.row.selectedCount >= scope.row.capacity">
+                                    {{ scope.row.selectedCount >= scope.row.capacity ? '已满' : '选课' }}
+                                </el-button>
+                                <el-button v-else size="mini" type="danger" @click="dropCourseById(scope.row)">
+                                    退选
+                                </el-button>
                             </template>
                         </el-table-column>
                     </el-table>
@@ -223,6 +323,68 @@
                         </span>
                     </el-dialog>
                 </div>
+
+                <!-- 课表查询 -->
+                <div v-if="currentPage === 'schedule'" class="card">
+                    <h2>课表查询</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-select v-model="scheduleWeek" placeholder="选择周次" style="width: 150px; margin-right: 10px;">
+                            <el-option v-for="i in 20" :key="i" :label="'第' + i + '周'" :value="i"></el-option>
+                        </el-select>
+                        <el-button type="primary" @click="loadSchedule">查询</el-button>
+                    </div>
+                    <el-table :data="scheduleList" style="width: 100%;">
+                        <el-table-column prop="weekDay" label="星期" width="80"></el-table-column>
+                        <el-table-column prop="classTime" label="节次" width="120"></el-table-column>
+                        <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                        <el-table-column prop="teacherName" label="教师" width="100"></el-table-column>
+                        <el-table-column prop="classLocation" label="地点" width="120"></el-table-column>
+                        <el-table-column prop="weeks" label="周次" width="150"></el-table-column>
+                    </el-table>
+                </div>
+
+                <!-- 信息维护 -->
+                <div v-if="currentPage === 'profile'" class="card">
+                    <h2>信息维护</h2>
+                    <el-alert title="提示：基本信息不可修改，如需修改请联系管理员" type="info" :closable="false" style="margin-bottom: 20px;"></el-alert>
+                    <el-form :model="profileForm" label-width="120px" style="max-width: 800px;">
+                        <el-divider content-position="left">联系方式</el-divider>
+                        <el-form-item label="手机号">
+                            <el-input v-model="profileForm.phone" placeholder="请输入手机号"></el-input>
+                        </el-form-item>
+                        <el-form-item label="邮箱">
+                            <el-input v-model="profileForm.email" placeholder="请输入邮箱"></el-input>
+                        </el-form-item>
+                        <el-form-item label="家庭地址">
+                            <el-input type="textarea" v-model="profileForm.homeAddress" :rows="2" placeholder="请输入家庭地址"></el-input>
+                        </el-form-item>
+                        
+                        <el-divider content-position="left">紧急联系人</el-divider>
+                        <el-form-item label="紧急联系人">
+                            <el-input v-model="profileForm.emergencyContact" placeholder="请输入紧急联系人姓名"></el-input>
+                        </el-form-item>
+                        <el-form-item label="联系电话">
+                            <el-input v-model="profileForm.emergencyPhone" placeholder="请输入联系电话"></el-input>
+                        </el-form-item>
+                        
+                        <el-divider content-position="left">修改密码</el-divider>
+                        <el-form-item label="原密码">
+                            <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码"></el-input>
+                        </el-form-item>
+                        <el-form-item label="新密码">
+                            <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码"></el-input>
+                        </el-form-item>
+                        <el-form-item label="确认密码">
+                            <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码"></el-input>
+                        </el-form-item>
+                        
+                        <el-form-item>
+                            <el-button type="primary" @click="updateProfile">保存信息</el-button>
+                            <el-button type="warning" @click="changePassword">修改密码</el-button>
+                            <el-button @click="resetProfileForm">重置</el-button>
+                        </el-form-item>
+                    </el-form>
+                </div>
             </div>
         </div>
     </div>
@@ -237,23 +399,56 @@
                 currentPage: 'dashboard',
                 activeMenu: 'myinfo',
                 currentUser: {},
+                studentProfile: {},
                 myCourses: [],
                 myScores: [],
                 courses: [],
                 competitions: [],
+                scheduleList: [],
+                scheduleWeek: 1,
                 competitionDialogVisible: false,
-                competitionForm: { competitionName: '', competitionType: '0', level: '0', teamMembers: '', description: '' }
+                competitionForm: { competitionName: '', competitionType: '0', level: '0', teamMembers: '', description: '' },
+                profileForm: { phone: '', email: '', homeAddress: '', emergencyContact: '', emergencyPhone: '' },
+                passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' }
             },
             created() {
                 const user = localStorage.getItem('user');
                 if (user) {
                     this.currentUser = JSON.parse(user);
+                    // 加载学生详细信息
+                    this.loadStudentProfile();
                 } else {
                     this.$message.error('未登录，请先登录');
                     window.location.href = '/index.html';
                 }
             },
+            computed: {
+                // 去重后的课程列表（同一课程可能被多个教师开设）
+                uniqueCourses() {
+                    const courseMap = new Map();
+                    this.courses.forEach(course => {
+                        // 使用 courseId + teacherId 作为唯一键
+                        const key = `${course.courseId}_${course.teacherId}`;
+                        if (!courseMap.has(key)) {
+                            courseMap.set(key, course);
+                        }
+                    });
+                    return Array.from(courseMap.values());
+                }
+            },
             methods: {
+                async loadStudentProfile() {
+                    try {
+                        const response = await axios.get(`/sys/user/student/profile/${this.currentUser.userId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.studentProfile = response.data.data || {};
+                        }
+                    } catch (error) {
+                        console.error('加载学生信息失败', error);
+                    }
+                },
                 navigateTo(page) {
                     this.currentPage = page;
                     this.activeMenu = page;
@@ -263,35 +458,96 @@
                         this.loadMyScores();
                     } else if (page === 'select') {
                         this.loadSelectableCourses();
+                    } else if (page === 'schedule') {
+                        this.loadSchedule();
+                    } else if (page === 'profile') {
+                        this.loadProfileForm();
                     } else if (page === 'competition') {
                         this.loadCompetitions();
                     }
                 },
                 async loadMyCourses() {
                     try {
-                        // TODO: 调用后端接口获取我的已选课程
-                        this.myCourses = [
-                            { courseCode: 'CS101', courseName: '程序设计基础', credits: 3.0, hours: 48, teacherName: '李老师', selectStatus: '0' },
-                            { courseCode: 'CS201', courseName: '数据结构', credits: 4.0, hours: 64, teacherName: '李老师', selectStatus: '0' }
-                        ];
+                        const response = await axios.get('/edu/course/my-courses', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.myCourses = response.data.data || [];
+                        }
                     } catch (error) {
                         console.error('加载我的课程失败', error);
+                        this.$message.error('加载课程失败');
                     }
+                },
+                async dropCourse(course) {
+                    this.$confirm(`确定要退选${course.courseName}吗？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.post('/edu/course/drop', {
+                                studentId: this.currentUser.userId,
+                                courseId: course.courseId
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('退选成功');
+                                this.loadMyCourses();
+                                this.loadSelectableCourses(); // 刷新选课中心
+                            } else {
+                                this.$message.error(response.data.message || '退选失败');
+                            }
+                        } catch (error) {
+                            this.$message.error(error.response?.data?.message || '退选失败');
+                        }
+                    }).catch(() => {});
+                },
+                async dropCourseById(course) {
+                    this.$confirm(`确定要退选${course.courseName}吗？`, '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.post('/edu/course/drop', {
+                                studentId: this.currentUser.userId,
+                                courseId: course.courseId
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('退选成功');
+                                course.selectedCount = Math.max(0, (course.selectedCount || 1) - 1);
+                                this.loadMyCourses();
+                            } else {
+                                this.$message.error(response.data.message || '退选失败');
+                            }
+                        } catch (error) {
+                            this.$message.error(error.response?.data?.message || '退选失败');
+                        }
+                    }).catch(() => {});
                 },
                 async loadSelectableCourses() {
                     try {
-                        const response = await axios.get('/edu/course/list', {
+                        // 获取已发布的课程
+                        const response = await axios.get('/edu/course/available', {
                             headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
                         });
                         if (response.data.code === 200) {
                             this.courses = response.data.data || [];
+                            console.log('可选课程列表:', this.courses);
+                        } else {
+                            this.$message.error(response.data.message || '加载课程失败');
                         }
                     } catch (error) {
                         console.error('加载可选课程失败', error);
+                        this.$message.error('加载课程失败');
                     }
                 },
                 isCourseSelected(courseId) {
-                    return this.myCourses.some(c => c.courseId === courseId && c.selectStatus === '0');
+                    return this.myCourses.some(c => c.courseId === courseId);
                 },
                 selectCourse(course) {
                     this.$confirm(`确定要选修${course.courseName}吗？`, '提示', {
@@ -300,24 +556,38 @@
                         type: 'warning'
                     }).then(async () => {
                         try {
-                            // TODO: 调用后端选课接口
-                            this.$message.success('选课成功（模拟）');
-                            // 更新本地数据
-                            course.selectedCount = (course.selectedCount || 0) + 1;
-                            this.loadMyCourses();
+                            const response = await axios.post('/edu/course/enroll', {
+                                studentId: this.currentUser.userId,
+                                releaseId: course.id,  // 使用 releaseId 而不是 courseId
+                                courseId: course.courseId,
+                                semesterId: course.semesterId
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('选课成功');
+                                course.selectedCount = (course.selectedCount || 0) + 1;
+                                this.loadMyCourses();
+                            } else {
+                                this.$message.error(response.data.message || '选课失败');
+                            }
                         } catch (error) {
-                            this.$message.error('选课失败');
+                            this.$message.error(error.response?.data?.message || '选课失败');
                         }
                     }).catch(() => {});
                 },
                 async loadMyScores() {
                     try {
-                        // TODO: 调用后端接口获取我的成绩
-                        this.myScores = [
-                            { courseCode: 'CS101', courseName: '程序设计基础', semesterName: '2025-2026秋季', regularScore: 85, finalScore: 90, totalScore: 88.5, gradePoint: 3.7, gradeLevel: '优秀', status: '2' }
-                        ];
+                        const response = await axios.get('/edu/score/my-scores', {
+                            params: { studentId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.myScores = response.data.data || [];
+                        }
                     } catch (error) {
                         console.error('加载成绩失败', error);
+                        this.$message.error('加载成绩失败');
                     }
                 },
                 getGradeTag(gradeLevel) {
@@ -401,6 +671,111 @@
                 getCompetitionStatusText(status) {
                     const map = { '0': '待审核', '1': '已通过', '2': '已驳回' };
                     return map[status] || '未知';
+                },
+                async loadSchedule() {
+                    try {
+                        // 从已选课程生成课表
+                        const response = await axios.get('/edu/course/my-courses', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            const courses = response.data.data || [];
+                            this.scheduleList = courses.map(c => ({
+                                courseName: c.courseName,
+                                teacherName: c.teacherName || '待分配',
+                                classLocation: c.classLocation || '待定',
+                                classTime: c.classTime || '待定',
+                                weeks: c.weeks || '1-18周',
+                                weekDay: this.getWeekDay(c.classTime)
+                            }));
+                        }
+                    } catch (error) {
+                        console.error('加载课表失败', error);
+                        this.$message.error('加载课表失败');
+                    }
+                },
+                getWeekDay(classTime) {
+                    // 简单解析上课时间，提取星期
+                    if (!classTime) return '未知';
+                    if (classTime.includes('周一')) return '星期一';
+                    if (classTime.includes('周二')) return '星期二';
+                    if (classTime.includes('周三')) return '星期三';
+                    if (classTime.includes('周四')) return '星期四';
+                    if (classTime.includes('周五')) return '星期五';
+                    if (classTime.includes('周六')) return '星期六';
+                    if (classTime.includes('周日')) return '星期日';
+                    return '未知';
+                },
+                loadProfileForm() {
+                    this.profileForm = {
+                        phone: this.studentProfile.phone || '',
+                        email: this.studentProfile.email || '',
+                        homeAddress: this.studentProfile.homeAddress || '',
+                        emergencyContact: this.studentProfile.emergencyContact || '',
+                        emergencyPhone: this.studentProfile.emergencyPhone || ''
+                    };
+                    this.passwordForm = { oldPassword: '', newPassword: '', confirmPassword: '' };
+                },
+                async updateProfile() {
+                    try {
+                        const response = await axios.put('/sys/user/student', {
+                            userId: this.currentUser.userId,
+                            phone: this.profileForm.phone,
+                            email: this.profileForm.email,
+                            homeAddress: this.profileForm.homeAddress,
+                            emergencyContact: this.profileForm.emergencyContact,
+                            emergencyPhone: this.profileForm.emergencyPhone
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('保存成功');
+                            this.loadStudentProfile();
+                        } else {
+                            this.$message.error(response.data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        this.$message.error(error.response?.data?.message || '保存失败');
+                    }
+                },
+                async changePassword() {
+                    if (!this.passwordForm.oldPassword || !this.passwordForm.newPassword || !this.passwordForm.confirmPassword) {
+                        this.$message.warning('请填写完整密码信息');
+                        return;
+                    }
+                    if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+                        this.$message.error('两次输入的密码不一致');
+                        return;
+                    }
+                    if (this.passwordForm.newPassword.length < 6) {
+                        this.$message.error('密码长度不能少于6位');
+                        return;
+                    }
+                    try {
+                        const response = await axios.put('/sys/user/password', {
+                            userId: this.currentUser.userId,
+                            oldPassword: this.passwordForm.oldPassword,
+                            newPassword: this.passwordForm.newPassword
+                        }, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('密码修改成功，请重新登录');
+                            this.passwordForm = { oldPassword: '', newPassword: '', confirmPassword: '' };
+                            setTimeout(() => {
+                                localStorage.removeItem('token');
+                                localStorage.removeItem('user');
+                                window.location.href = '/index.html';
+                            }, 1500);
+                        } else {
+                            this.$message.error(response.data.message || '修改失败');
+                        }
+                    } catch (error) {
+                        this.$message.error(error.response?.data?.message || '修改失败');
+                    }
+                },
+                resetProfileForm() {
+                    this.loadProfileForm();
                 },
                 handleLogout() {
                     localStorage.removeItem('token');
