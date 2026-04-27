@@ -6,9 +6,12 @@ import org.example.common.Result;
 import org.example.entity.EduCourse;
 import org.example.entity.EduScore;
 import org.example.entity.EduStudent;
+import org.example.entity.EduStudentCourse;
 import org.example.mapper.EduCourseMapper;
 import org.example.mapper.EduScoreMapper;
+import org.example.mapper.EduStudentCourseMapper;
 import org.example.mapper.EduStudentMapper;
+import org.example.mapper.SysUserMapper;
 import org.example.service.EduScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,18 +29,26 @@ public class EduScoreServiceImpl extends ServiceImpl<EduScoreMapper, EduScore> i
 
     @Autowired
     private EduCourseMapper courseMapper;
+    
+    @Autowired
+    private EduStudentCourseMapper studentCourseMapper;
+    
+    @Autowired
+    private SysUserMapper userMapper;
 
     @Override
     public List<Map<String, Object>> getScoresByCourse(Long courseId) {
-        // 查询该课程的所有成绩记录
-        LambdaQueryWrapper<EduScore> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(EduScore::getCourseId, courseId);
-        List<EduScore> scores = this.list(wrapper);
+        // 先查询该课程的所有选课学生
+        LambdaQueryWrapper<EduStudentCourse> scWrapper = new LambdaQueryWrapper<>();
+        scWrapper.eq(EduStudentCourse::getCourseId, courseId)
+                 .eq(EduStudentCourse::getSelectStatus, "1"); // 只查已选课的
+        List<EduStudentCourse> studentCourses = studentCourseMapper.selectList(scWrapper);
         
-        // 获取所有学生ID
-        Set<Long> studentIds = scores.stream()
-            .map(EduScore::getStudentId)
+        // 获取所有学生ID和userId
+        Set<Long> studentIds = studentCourses.stream()
+            .map(EduStudentCourse::getStudentId)
             .collect(Collectors.toSet());
+        Set<Long> userIds = new HashSet<>();
         
         // 查询学生信息
         Map<Long, EduStudent> studentMap = new HashMap<>();
@@ -45,29 +56,69 @@ public class EduScoreServiceImpl extends ServiceImpl<EduScoreMapper, EduScore> i
             List<EduStudent> students = studentMapper.selectBatchIds(studentIds);
             studentMap = students.stream()
                 .collect(Collectors.toMap(EduStudent::getStudentId, s -> s));
+            // 收集所有userId
+            userIds = students.stream()
+                .map(EduStudent::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         }
         
-        // 组装返回数据
+        // 查询用户信息获取姓名
+        Map<Long, String> userNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            LambdaQueryWrapper<org.example.entity.SysUser> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.in(org.example.entity.SysUser::getUserId, userIds);
+            List<org.example.entity.SysUser> users = userMapper.selectList(userWrapper);
+            userNameMap = users.stream()
+                .collect(Collectors.toMap(
+                    org.example.entity.SysUser::getUserId,
+                    u -> u.getRealName() != null ? u.getRealName() : u.getUserName(),
+                    (u1, u2) -> u1
+                ));
+        }
+        
+        // 查询已有的成绩记录
+        LambdaQueryWrapper<EduScore> scoreWrapper = new LambdaQueryWrapper<>();
+        scoreWrapper.eq(EduScore::getCourseId, courseId);
+        List<EduScore> scores = this.list(scoreWrapper);
+        Map<Long, EduScore> scoreMap = scores.stream()
+            .collect(Collectors.toMap(EduScore::getStudentId, s -> s, (s1, s2) -> s1));
+        
+        // 组装返回数据(包含所有选课学生,即使没有成绩)
         List<Map<String, Object>> result = new ArrayList<>();
-        for (EduScore score : scores) {
+        for (EduStudentCourse sc : studentCourses) {
             Map<String, Object> item = new HashMap<>();
-            EduStudent student = studentMap.get(score.getStudentId());
+            EduStudent student = studentMap.get(sc.getStudentId());
+            EduScore score = scoreMap.get(sc.getStudentId());
             
-            item.put("scoreId", score.getScoreId());
-            item.put("studentId", score.getStudentId());
-            item.put("courseId", score.getCourseId());
-            item.put("semesterId", score.getSemesterId());
-            item.put("usualScore", score.getRegularScore());
-            item.put("midtermScore", BigDecimal.ZERO); // 暂不支持期中
-            item.put("finalScore", score.getFinalScore());
-            item.put("totalScore", score.getTotalScore());
-            item.put("status", score.getStatus());
-            item.put("locked", "1".equals(score.getStatus())); // 已审核则锁定
+            if (score != null) {
+                item.put("scoreId", score.getScoreId());
+                item.put("usualScore", score.getRegularScore());
+                item.put("midtermScore", BigDecimal.ZERO);
+                item.put("finalScore", score.getFinalScore());
+                item.put("totalScore", score.getTotalScore());
+                item.put("status", score.getStatus());
+                item.put("locked", "1".equals(score.getStatus()));
+            } else {
+                // 没有成绩记录,初始化空值
+                item.put("scoreId", null);
+                item.put("usualScore", null);
+                item.put("midtermScore", null);
+                item.put("finalScore", null);
+                item.put("totalScore", null);
+                item.put("status", "0");
+                item.put("locked", false);
+            }
+            
+            item.put("studentId", sc.getStudentId());
+            item.put("courseId", courseId);
+            item.put("semesterId", sc.getSemesterId());
             
             if (student != null) {
                 item.put("studentNo", student.getStudentNo());
-                // TODO: 需要从 sys_user 表关联查询 realName
-                item.put("studentName", student.getRealName() != null ? student.getRealName() : "学生" + student.getStudentNo());
+                // 从sys_user表获取姓名
+                String studentName = userNameMap.get(student.getUserId());
+                item.put("studentName", studentName != null ? studentName : "学生" + student.getStudentNo());
             }
             
             result.add(item);

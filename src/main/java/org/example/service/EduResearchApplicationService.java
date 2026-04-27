@@ -14,6 +14,12 @@ public interface EduResearchApplicationService extends IService<EduResearchAppli
     
     Result<?> getPendingAudit();
     
+    Result<?> getApprovedList();
+    
+    Result<Boolean> updateApplication(Long applicationId, Long teacherId, Integer researchType, Map<String, Object> detailData);
+    
+    Result<Boolean> withdrawApplication(Long applicationId, Long teacherId);
+    
     Result<Boolean> auditApplication(Long applicationId, String status, Long auditBy, String auditRemark);
     
     Result<?> getApplicationDetail(Long applicationId);

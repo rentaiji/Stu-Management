@@ -195,22 +195,50 @@
                 <!-- 科研审核 -->
                 <div v-if="currentPage === 'research-audit'" class="card">
                     <h2>科研申报审核</h2>
-                    <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
-                    <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
-                    <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
-                        <el-table-column prop="title" label="标题"></el-table-column>
-                        <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
-                        <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
-                        <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
-                        <el-table-column label="操作" width="200">
-                            <template slot-scope="scope">
-                                <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
-                                <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
-                                <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                    <el-tabs v-model="researchTab" @tab-click="handleResearchTabClick">
+                        <el-tab-pane label="未审批" name="pending">
+                            <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
+                            <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
+                            <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="title" label="标题"></el-table-column>
+                                <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                                <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                                <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
+                                <el-table-column label="操作" width="200">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                        <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
+                                        <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                        </el-tab-pane>
+                        <el-tab-pane label="已审批" name="approved">
+                            <el-button type="primary" @click="loadApprovedResearch" icon="el-icon-refresh">刷新</el-button>
+                            <el-alert v-if="approvedResearch.length > 0" :title="'共 ' + approvedResearch.length + ' 条已审批申请'" type="info" :closable="false" style="margin-top: 10px;"></el-alert>
+                            <el-table :data="approvedResearch" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="title" label="标题"></el-table-column>
+                                <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                                <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                                <el-table-column prop="status" label="状态" width="100">
+                                    <template slot-scope="scope">
+                                        <el-tag :type="scope.row.status === '1' ? 'success' : 'danger'">
+                                            {{ scope.row.status === '1' ? '已通过' : '已拒绝' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="auditRemark" label="审核意见" width="200"></el-table-column>
+                                <el-table-column prop="auditTime" label="审核时间" width="180"></el-table-column>
+                                <el-table-column label="操作" width="120">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <el-empty v-if="approvedResearch.length === 0" description="暂无已审批申请"></el-empty>
+                        </el-tab-pane>
+                    </el-tabs>
                     
                     <!-- 详情对话框 -->
                     <el-dialog title="申报详情" :visible.sync="researchDetailDialogVisible" width="70%">
@@ -263,6 +291,8 @@
                 releasedCourseCount: 0,
                 totalEnrollCount: 0,
                 pendingResearch: [],
+                approvedResearch: [],
+                researchTab: 'pending',
                 researchDetailDialogVisible: false,
                 rejectResearchDialogVisible: false,
                 researchDetail: null,
@@ -290,6 +320,7 @@
                         this.loadPendingAudit();
                     } else if (page === 'research-audit') {
                         this.loadPendingResearch();
+                        this.loadApprovedResearch();
                     }
                 },
                 async loadDashboardData() {
@@ -466,6 +497,13 @@
                     window.location.href = '/index.html';
                 },
                 // 科研审核相关方法
+                handleResearchTabClick(tab) {
+                    if (tab.name === 'pending') {
+                        this.loadPendingResearch();
+                    } else if (tab.name === 'approved') {
+                        this.loadApprovedResearch();
+                    }
+                },
                 async loadPendingResearch() {
                     try {
                         const res = await axios.get('/edu/research/pending-audit', {
@@ -476,6 +514,19 @@
                         }
                     } catch (error) {
                         console.error('加载待审核列表失败', error);
+                        this.$message.error('加载失败');
+                    }
+                },
+                async loadApprovedResearch() {
+                    try {
+                        const res = await axios.get('/edu/research/approved-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.approvedResearch = res.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载已审批列表失败', error);
                         this.$message.error('加载失败');
                     }
                 },

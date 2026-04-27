@@ -30,4 +30,6 @@ public class EduResearchCcfPaper {
     private Double points;
     
     private String remark;
+    
+    private String attachmentUrl; // 附件PDF路径
 }

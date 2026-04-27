@@ -33,4 +33,6 @@ public class EduResearchProject {
     private Double receivedAmount;
     
     private String remark;
+    
+    private String attachmentUrl; // 附件PDF路径
 }

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>人事档案管理 - 学生综合服务与教学协同平台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; }
+        .user-info { display: flex; align-items: center; gap: 20px; }
+        .logout-btn { cursor: pointer; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .sidebar { width: 200px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .section-title { background: #e3f2fd; padding: 10px 15px; margin: 20px 0 10px 0; font-weight: bold; color: #1976d2; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>人事档案管理</h1>
+            <div class="user-info">
+                <span>欢迎，{{ currentUser.realName || currentUser.userName }}</span>
+                <el-button type="text" class="logout-btn" @click="handleLogout">退出登录</el-button>
+            </div>
+        </div>
+        <div class="container">
+            <div class="sidebar">
+                <el-menu default-active="hr-archive" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
+                    <el-menu-item index="dashboard">
+                        <i class="el-icon-s-home"></i>
+                        <span>返回首页</span>
+                    </el-menu-item>
+                    <el-menu-item index="hr-archive">
+                        <i class="el-icon-document"></i>
+                        <span>人事档案</span>
+                    </el-menu-item>
+                </el-menu>
+            </div>
+            <div class="main-content">
+                <!-- 人事档案管理 -->
+                <div class="card">
+                    <h2>教职工人事档案</h2>
+                    <div style="margin-bottom: 10px;">
+                        <el-input 
+                            v-model="searchKeyword" 
+                            placeholder="请输入工号或姓名查询" 
+                            style="width: 300px; margin-right: 10px;"
+                            clearable
+                            @keyup.enter.native="loadTeachers">
+                        </el-input>
+                        <el-button type="primary" @click="loadTeachers">查询</el-button>
+                        <el-button @click="resetSearch">重置</el-button>
+                        <el-button type="success" @click="exportArchive">导出Excel</el-button>
+                    </div>
+                    <el-tabs v-model="activeArchiveTab" @tab-click="handleArchiveTabClick">
+                        <el-tab-pane :label="'已建档 (' + archivedCount + ')'" name="archived">
+                            <el-table :data="archivedTeachers" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="userName" label="工号" width="120"></el-table-column>
+                                <el-table-column prop="realName" label="姓名" width="120"></el-table-column>
+                                <el-table-column prop="phone" label="手机号" width="150"></el-table-column>
+                                <el-table-column prop="email" label="邮箱"></el-table-column>
+                                <el-table-column prop="deptName" label="所属院系" width="150"></el-table-column>
+                                <el-table-column label="操作" width="200">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" type="primary" @click="editArchive(scope.row)">编辑档案</el-button>
+                                        <el-button size="mini" type="danger" @click="deleteArchive(scope.row)">删除档案</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-tab-pane>
+                        <el-tab-pane :label="'未建档 (' + unarchivedCount + ')'" name="unarchived">
+                            <el-table :data="unarchivedTeachers" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="userName" label="工号" width="120"></el-table-column>
+                                <el-table-column prop="realName" label="姓名" width="120"></el-table-column>
+                                <el-table-column prop="phone" label="手机号" width="150"></el-table-column>
+                                <el-table-column prop="email" label="邮箱"></el-table-column>
+                                <el-table-column prop="deptName" label="所属院系" width="150"></el-table-column>
+                                <el-table-column label="操作" width="120">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" type="primary" @click="editArchive(scope.row)">创建档案</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-tab-pane>
+                    </el-tabs>
+                    
+                    <!-- 档案编辑对话框 -->
+                    <el-dialog :title="archiveForm.archiveId ? '编辑人事档案' : '创建人事档案'" :visible.sync="archiveDialogVisible" width="90%" top="5vh">
+                        <el-tabs v-model="activeTab" type="border-card">
+                            <!-- 基本信息 -->
+                            <el-tab-pane label="基本信息" name="basic">
+                                <el-form :model="archiveForm" label-width="150px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="姓名拼音">
+                                                <el-input v-model="archiveForm.namePinyin"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="民族">
+                                                <el-select v-model="archiveForm.nation" style="width: 100%;">
+                                                    <el-option label="汉族" value="汉族"></el-option>
+                                                    <el-option label="回族" value="回族"></el-option>
+                                                    <el-option label="满族" value="满族"></el-option>
+                                                    <el-option label="蒙古族" value="蒙古族"></el-option>
+                                                    <el-option label="藏族" value="藏族"></el-option>
+                                                    <el-option label="其他" value="其他"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="年龄">
+                                                <el-input-number v-model="archiveForm.age" :min="0" style="width: 100%;"></el-input-number>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="档案出生日期">
+                                                <el-date-picker v-model="archiveForm.birthDateArchive" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="籍贯">
+                                                <el-input v-model="archiveForm.nativePlace"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="国籍(地区)">
+                                                <el-input v-model="archiveForm.nationalityRegion"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="婚否">
+                                                <el-select v-model="archiveForm.maritalStatus" style="width: 100%;">
+                                                    <el-option label="未婚" value="未婚"></el-option>
+                                                    <el-option label="已婚" value="已婚"></el-option>
+                                                    <el-option label="离异" value="离异"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="党派/政治面貌">
+                                                <el-select v-model="archiveForm.politicalStatus" style="width: 100%;">
+                                                    <el-option label="中共党员" value="中共党员"></el-option>
+                                                    <el-option label="共青团员" value="共青团员"></el-option>
+                                                    <el-option label="群众" value="群众"></el-option>
+                                                    <el-option label="民主党派" value="民主党派"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="入党日期">
+                                                <el-date-picker v-model="archiveForm.joinPartyDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-tab-pane>
+
+                            <!-- 工作信息 -->
+                            <el-tab-pane label="工作信息" name="work">
+                                <el-form :model="archiveForm" label-width="150px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="参加工作年月">
+                                                <el-date-picker v-model="archiveForm.joinWorkDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="从教年月">
+                                                <el-date-picker v-model="archiveForm.joinTeachingDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="来校时间">
+                                                <el-date-picker v-model="archiveForm.joinSchoolDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="预计退休日期">
+                                                <el-date-picker v-model="archiveForm.expectedRetireDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="当前状态">
+                                                <el-select v-model="archiveForm.currentStatus" style="width: 100%;">
+                                                    <el-option label="在职" value="在职"></el-option>
+                                                    <el-option label="离职" value="离职"></el-option>
+                                                    <el-option label="退休" value="退休"></el-option>
+                                                    <el-option label="返聘" value="返聘"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="个人身份">
+                                                <el-select v-model="archiveForm.personalStatus" style="width: 100%;">
+                                                    <el-option label="专任教师" value="专任教师"></el-option>
+                                                    <el-option label="行政人员" value="行政人员"></el-option>
+                                                    <el-option label="辅导员" value="辅导员"></el-option>
+                                                    <el-option label="教辅人员" value="教辅人员"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-tab-pane>
+
+                            <!-- 学历信息 -->
+                            <el-tab-pane label="学历信息" name="education">
+                                <el-form :model="archiveForm" label-width="150px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="最高学位">
+                                                <el-select v-model="archiveForm.highestDegree" style="width: 100%;">
+                                                    <el-option label="学士" value="学士"></el-option>
+                                                    <el-option label="硕士" value="硕士"></el-option>
+                                                    <el-option label="博士" value="博士"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="毕业院校">
+                                                <el-input v-model="archiveForm.highestDegreeSchool"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="所学专业">
+                                                <el-input v-model="archiveForm.highestDegreeMajor"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="学历开始时间">
+                                                <el-date-picker v-model="archiveForm.highestDegreeStart" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="毕业时间">
+                                                <el-date-picker v-model="archiveForm.highestDegreeEnd" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-divider></el-divider>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="第一学历">
+                                                <el-select v-model="archiveForm.firstDegree" style="width: 100%;">
+                                                    <el-option label="专科" value="专科"></el-option>
+                                                    <el-option label="本科" value="本科"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="毕业院校">
+                                                <el-input v-model="archiveForm.firstDegreeSchool"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="所学专业">
+                                                <el-input v-model="archiveForm.firstDegreeMajor"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="毕业时间">
+                                                <el-date-picker v-model="archiveForm.firstDegreeEnd" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="所属门类">
+                                                <el-input v-model="archiveForm.disciplineCategory"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-tab-pane>
+
+                            <!-- 职称岗位 -->
+                            <el-tab-pane label="职称岗位" name="title">
+                                <el-form :model="archiveForm" label-width="150px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="职称">
+                                                <el-select v-model="archiveForm.professionalTitle" style="width: 100%;">
+                                                    <el-option label="助教" value="助教"></el-option>
+                                                    <el-option label="讲师" value="讲师"></el-option>
+                                                    <el-option label="副教授" value="副教授"></el-option>
+                                                    <el-option label="教授" value="教授"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="评聘年月">
+                                                <el-date-picker v-model="archiveForm.titleAppointmentDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="职务级别">
+                                                <el-select v-model="archiveForm.professionalTitleLevel" style="width: 100%;">
+                                                    <el-option label="正高" value="正高"></el-option>
+                                                    <el-option label="副高" value="副高"></el-option>
+                                                    <el-option label="中级" value="中级"></el-option>
+                                                    <el-option label="初级" value="初级"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="岗位">
+                                                <el-select v-model="archiveForm.position" style="width: 100%;">
+                                                    <el-option label="教学岗" value="教学岗"></el-option>
+                                                    <el-option label="科研岗" value="科研岗"></el-option>
+                                                    <el-option label="教学科研岗" value="教学科研岗"></el-option>
+                                                    <el-option label="管理岗" value="管理岗"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="岗位等级">
+                                                <el-input v-model="archiveForm.positionLevel"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="聘任时间">
+                                                <el-date-picker v-model="archiveForm.positionAppointmentDate" type="date" placeholder="选择日期" style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="是否管理岗位">
+                                                <el-radio-group v-model="archiveForm.isManagementPost">
+                                                    <el-radio :label="1">是</el-radio>
+                                                    <el-radio :label="0">否</el-radio>
+                                                </el-radio-group>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="是否专技岗位">
+                                                <el-radio-group v-model="archiveForm.isProfessionalPost">
+                                                    <el-radio :label="1">是</el-radio>
+                                                    <el-radio :label="0">否</el-radio>
+                                                </el-radio-group>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="是否工勤岗位">
+                                                <el-radio-group v-model="archiveForm.isWorkerPost">
+                                                    <el-radio :label="1">是</el-radio>
+                                                    <el-radio :label="0">否</el-radio>
+                                                </el-radio-group>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-tab-pane>
+
+                            <!-- 联系方式 -->
+                            <el-tab-pane label="联系方式" name="contact">
+                                <el-form :model="archiveForm" label-width="150px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="手机号">
+                                                <el-input v-model="archiveForm.phone"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="邮箱">
+                                                <el-input v-model="archiveForm.email"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="住址">
+                                                <el-input v-model="archiveForm.address"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="紧急联系人">
+                                                <el-input v-model="archiveForm.emergencyContact"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="紧急联系人手机">
+                                                <el-input v-model="archiveForm.emergencyContactPhone"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-tab-pane>
+                        </el-tabs>
+                        <span slot="footer">
+                            <el-button @click="archiveDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="saveArchive">保存</el-button>
+                        </span>
+                    </el-dialog>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                currentUser: {},
+                teachers: [],
+                archivedTeachers: [],
+                unarchivedTeachers: [],
+                departments: [],
+                searchKeyword: '',
+                archiveDialogVisible: false,
+                activeTab: 'basic',
+                activeArchiveTab: 'archived',
+                archivedCount: 0,
+                unarchivedCount: 0,
+                archiveForm: {
+                    archiveId: null,
+                    userId: null
+                }
+            },
+            created() {
+                console.log('=== 人事档案管理页面已加载 (版本: 2026-04-24-v2) ===');
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.currentUser = JSON.parse(user);
+                } else {
+                    this.$message.error('未登录，请先登录');
+                    window.location.href = '/index.html';
+                }
+                // 先加载院系，再加载教师
+                this.loadDepartments().then(() => {
+                    this.loadTeachers();
+                });
+            },
+            methods: {
+                navigateTo(page) {
+                    if (page === 'dashboard') {
+                        window.location.href = '/main.html';
+                    }
+                },
+                async loadDepartments() {
+                    try {
+                        const response = await axios.get('/sys/dept/list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.departments = response.data.data || [];
+                            console.log('加载院系:', this.departments);
+                        }
+                    } catch (error) {
+                        console.error('加载院系失败:', error);
+                    }
+                },
+                async loadTeachers() {
+                    try {
+                        const params = { userType: '1' };
+                        if (this.searchKeyword) {
+                            params.keyword = this.searchKeyword;
+                        }
+                        // 添加时间戳防止缓存
+                        params._t = Date.now();
+                        const response = await axios.get('/sys/user/list', {
+                            params: params,
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.teachers = response.data.data || [];
+                            console.log('加载教师:', this.teachers);
+                            // 从 remark 字段获取院系名称
+                            this.teachers.forEach(teacher => {
+                                teacher.deptName = teacher.remark || '未分配';
+                                console.log(`教师 ${teacher.realName} deptId=${teacher.deptId}, deptName=${teacher.deptName}`);
+                            });
+                            // 使用 Promise.all 并发查询所有档案
+                            const archivePromises = this.teachers.map(async (teacher) => {
+                                try {
+                                    const archiveRes = await axios.get(`/hr/archive/user/${teacher.userId}?_t=${Date.now()}`, {
+                                        headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                                    });
+                                    // 只要档案ID存在，就显示已建档
+                                    if (archiveRes.data.code === 200 && archiveRes.data.data && archiveRes.data.data.archiveId) {
+                                        teacher.hasArchive = true;
+                                    } else {
+                                        teacher.hasArchive = false;
+                                    }
+                                } catch (e) {
+                                    teacher.hasArchive = false;
+                                }
+                            });
+                            await Promise.all(archivePromises);
+                            // 分类教师列表
+                            this.archivedTeachers = this.teachers.filter(t => t.hasArchive);
+                            this.unarchivedTeachers = this.teachers.filter(t => !t.hasArchive);
+                            this.archivedCount = this.archivedTeachers.length;
+                            this.unarchivedCount = this.unarchivedTeachers.length;
+                            // 强制更新视图
+                            this.$forceUpdate();
+                        }
+                    } catch (error) {
+                        console.error('加载失败:', error);
+                        this.$message.error('加载失败');
+                    }
+                },
+                resetSearch() {
+                    this.searchKeyword = '';
+                    this.loadTeachers();
+                },
+                handleArchiveTabClick(tab) {
+                    // 切换标签页时的处理
+                    console.log('切换到:', tab.name);
+                },
+                async editArchive(teacher) {
+                    try {
+                        const response = await axios.get(`/hr/archive/user/${teacher.userId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        console.log('查询档案响应:', response.data);
+                        if (response.data.code === 200 && response.data.data) {
+                            // 使用深拷贝，避免引用问题
+                            this.archiveForm = JSON.parse(JSON.stringify(response.data.data));
+                            console.log('编辑档案，archiveId:', this.archiveForm.archiveId, 'userId:', this.archiveForm.userId);
+                        } else {
+                            // 新建档案
+                            this.archiveForm = {
+                                userId: teacher.userId,
+                                archiveId: null
+                            };
+                            console.log('创建新档案');
+                        }
+                    } catch (error) {
+                        // 没有档案，创建新的
+                        this.archiveForm = {
+                            userId: teacher.userId,
+                            archiveId: null
+                        };
+                        console.log('创建新档案（异常）');
+                    }
+                    this.archiveDialogVisible = true;
+                },
+                async saveArchive() {
+                    try {
+                        console.log('保存档案数据:', this.archiveForm);
+                        console.log('archiveId:', this.archiveForm.archiveId, 'userId:', this.archiveForm.userId);
+                        const response = await axios.post('/hr/archive', this.archiveForm, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        console.log('保存响应:', response.data);
+                        if (response.data.code === 200) {
+                            this.$message.success('保存成功');
+                            this.archiveDialogVisible = false;
+                            this.loadTeachers();
+                        } else {
+                            this.$message.error(response.data.message || '保存失败');
+                        }
+                    } catch (error) {
+                        console.error('保存错误:', error);
+                        console.error('错误详情:', error.response?.data);
+                        this.$message.error(error.response?.data?.message || '保存失败');
+                    }
+                },
+                async deleteArchive(teacher) {
+                    this.$confirm('确定要删除该教师的人事档案吗？删除后将级联删除所有子表数据。', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const archiveRes = await axios.get(`/hr/archive/user/${teacher.userId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (archiveRes.data.data) {
+                                const response = await axios.delete(`/hr/archive/${archiveRes.data.data.archiveId}`, {
+                                    headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                                });
+                                if (response.data.code === 200) {
+                                    this.$message.success('删除成功');
+                                    this.loadTeachers();
+                                }
+                            }
+                        } catch (error) {
+                            this.$message.error('删除失败');
+                        }
+                    }).catch(() => {});
+                },
+                exportArchive() {
+                    window.open('/hr/archive/export?token=' + localStorage.getItem('token'), '_blank');
+                },
+                handleLogout() {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    this.$message.success('已退出登录');
+                    window.location.href = '/index.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

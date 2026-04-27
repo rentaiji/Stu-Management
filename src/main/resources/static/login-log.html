@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录日志 - 系统管理</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h2 { color: #303133; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="card">
+                <div class="header">
+                    <div>
+                        <el-button size="small" @click="goBack" icon="el-icon-arrow-left">返回首页</el-button>
+                    </div>
+                    <h2>登录日志</h2>
+                    <div>
+                        <el-button type="danger" @click="clearAllLogs" icon="el-icon-delete">清空日志</el-button>
+                        <el-button type="primary" @click="loadLogs" icon="el-icon-refresh">刷新</el-button>
+                    </div>
+                </div>
+
+                <!-- 搜索栏 -->
+                <el-form :inline="true" :model="searchForm" style="margin-bottom: 20px;">
+                    <el-form-item label="用户名/姓名">
+                        <el-input v-model="searchForm.username" placeholder="请输入" clearable></el-input>
+                    </el-form-item>
+                    <el-form-item label="开始日期">
+                        <el-date-picker v-model="searchForm.startDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd"></el-date-picker>
+                    </el-form-item>
+                    <el-form-item label="结束日期">
+                        <el-date-picker v-model="searchForm.endDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd"></el-date-picker>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="loadLogs" icon="el-icon-search">查询</el-button>
+                        <el-button @click="resetSearch">重置</el-button>
+                    </el-form-item>
+                </el-form>
+
+                <!-- 日志表格 -->
+                <el-table :data="logList" style="width: 100%" border>
+                    <el-table-column prop="logId" label="日志ID" width="80"></el-table-column>
+                    <el-table-column prop="username" label="账号" width="120"></el-table-column>
+                    <el-table-column prop="realName" label="姓名" width="100"></el-table-column>
+                    <el-table-column prop="userType" label="用户类型" width="100">
+                        <template slot-scope="scope">
+                            <el-tag v-if="scope.row.userType === '0'" type="success">学生</el-tag>
+                            <el-tag v-else-if="scope.row.userType === '1'" type="primary">教师</el-tag>
+                            <el-tag v-else-if="scope.row.userType === '2'" type="warning">管理员</el-tag>
+                            <span v-else>{{ scope.row.userType }}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="loginTime" label="登录时间" width="180"></el-table-column>
+                    <el-table-column prop="ipAddress" label="IP地址" width="150"></el-table-column>
+                    <el-table-column prop="loginStatus" label="登录状态" width="100">
+                        <template slot-scope="scope">
+                            <el-tag v-if="scope.row.loginStatus === '成功'" type="success">成功</el-tag>
+                            <el-tag v-else type="danger">失败</el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="failReason" label="失败原因" width="200">
+                        <template slot-scope="scope">
+                            <span v-if="scope.row.loginStatus === '失败'" style="color: #F56C6C;">{{ scope.row.failReason || '-' }}</span>
+                            <span v-else>-</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="operation" label="操作" width="150"></el-table-column>
+                    <el-table-column prop="userAgent" label="浏览器信息" min-width="200" show-overflow-tooltip></el-table-column>
+                    <el-table-column label="操作" width="100" fixed="right">
+                        <template slot-scope="scope">
+                            <el-button size="mini" type="danger" @click="deleteLog(scope.row)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+                <!-- 分页 -->
+                <el-pagination
+                    @current-change="handlePageChange"
+                    @size-change="handleSizeChange"
+                    :current-page="pagination.pageNum"
+                    :page-sizes="[10, 20, 50, 100]"
+                    :page-size="pagination.pageSize"
+                    layout="total, sizes, prev, pager, next, jumper"
+                    :total="pagination.total"
+                    style="margin-top: 20px; text-align: right;">
+                </el-pagination>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                logList: [],
+                searchForm: {
+                    username: '',
+                    startDate: '',
+                    endDate: ''
+                },
+                pagination: {
+                    pageNum: 1,
+                    pageSize: 10,
+                    total: 0
+                }
+            },
+            created() {
+                this.checkPermission();
+                this.loadLogs();
+            },
+            methods: {
+                checkPermission() {
+                    const user = localStorage.getItem('user');
+                    if (!user) {
+                        this.$message.error('未登录，请先登录');
+                        window.location.href = '/index.html';
+                        return;
+                    }
+                    const currentUser = JSON.parse(user);
+                    // 检查是否为系统管理员（userType=2）
+                    if (currentUser.userType !== '2') {
+                        this.$message.error('权限不足，仅系统管理员可访问');
+                        window.location.href = '/index.html';
+                    }
+                },
+                async loadLogs() {
+                    try {
+                        const response = await axios.get('/sys/login-log/list', {
+                            params: {
+                                pageNum: this.pagination.pageNum,
+                                pageSize: this.pagination.pageSize,
+                                username: this.searchForm.username,
+                                startDate: this.searchForm.startDate,
+                                endDate: this.searchForm.endDate
+                            },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.logList = response.data.data.records || [];
+                            this.pagination.total = response.data.data.total || 0;
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                handlePageChange(page) {
+                    this.pagination.pageNum = page;
+                    this.loadLogs();
+                },
+                handleSizeChange(size) {
+                    this.pagination.pageSize = size;
+                    this.pagination.pageNum = 1;
+                    this.loadLogs();
+                },
+                resetSearch() {
+                    this.searchForm = {
+                        username: '',
+                        startDate: '',
+                        endDate: ''
+                    };
+                    this.pagination.pageNum = 1;
+                    this.loadLogs();
+                },
+                deleteLog(row) {
+                    this.$confirm('确定删除该条日志吗？', '提示', { type: 'warning' }).then(async () => {
+                        try {
+                            const response = await axios.delete(`/sys/login-log/${row.logId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('删除成功');
+                                this.loadLogs();
+                            }
+                        } catch (error) {
+                            this.$message.error('删除失败');
+                        }
+                    }).catch(() => {});
+                },
+                clearAllLogs() {
+                    this.$confirm('确定清空所有登录日志吗？此操作不可恢复！', '警告', { 
+                        type: 'warning',
+                        confirmButtonText: '确定清空',
+                        cancelButtonText: '取消'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.delete('/sys/login-log/clear', {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('清空成功');
+                                this.loadLogs();
+                            }
+                        } catch (error) {
+                            this.$message.error('清空失败');
+                        }
+                    }).catch(() => {});
+                },
+                goBack() {
+                    window.location.href = '/main.html';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

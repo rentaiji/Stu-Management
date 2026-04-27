@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>竞赛申报审批</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="card">
+                <h2>竞赛申报审批</h2>
+                <el-table :data="pendingList" style="width: 100%">
+                    <el-table-column prop="competitionName" label="竞赛名称" width="200"></el-table-column>
+                    <el-table-column prop="awardLevel" label="获奖级别" width="100"></el-table-column>
+                    <el-table-column prop="awardRank" label="获奖等级" width="100"></el-table-column>
+                    <el-table-column prop="awardTime" label="获奖时间" width="120"></el-table-column>
+                    <el-table-column prop="isTeamAward" label="类型" width="80">
+                        <template slot-scope="scope">
+                            {{ scope.row.isTeamAward === 1 ? '团队' : '个人' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="createTime" label="申报时间" width="160"></el-table-column>
+                    <el-table-column label="操作" width="200">
+                        <template slot-scope="scope">
+                            <el-button size="mini" type="primary" @click="viewDetail(scope.row)">查看</el-button>
+                            <el-button size="mini" type="success" @click="approve(scope.row)">通过</el-button>
+                            <el-button size="mini" type="danger" @click="showRejectDialog(scope.row)">驳回</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+
+            <!-- 详情对话框 -->
+            <el-dialog title="申报详情" :visible.sync="detailVisible" width="800px">
+                <el-descriptions :column="2" border v-if="currentDetail">
+                    <el-descriptions-item label="学生姓名">{{ currentDetail.realName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="学号">{{ currentDetail.userName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="学院">{{ currentDetail.deptName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="竞赛名称">{{ currentDetail.competitionName }}</el-descriptions-item>
+                    <el-descriptions-item label="主办单位">{{ currentDetail.hostInstitution || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖级别">{{ currentDetail.awardLevel }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖等级">{{ currentDetail.awardRank }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖级别细分">{{ currentDetail.awardGrade || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="项目名称">{{ currentDetail.projectName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="是否团队奖">{{ currentDetail.isTeamAward === 1 ? '是' : '否' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队排名" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamRank || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队人数" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamSize || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队成员" :span="2" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamMembers || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖时间">{{ currentDetail.awardTime }}</el-descriptions-item>
+                    <el-descriptions-item label="证书编号">{{ currentDetail.certificateNo || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="赛道/组别">{{ currentDetail.trackGroup || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="指导教师1">{{ currentDetail.instructor1Name || '-' }} ({{ currentDetail.instructor1Dept || '-' }})</el-descriptions-item>
+                    <el-descriptions-item label="指导教师2">{{ currentDetail.instructor2Name || '-' }} ({{ currentDetail.instructor2Dept || '-' }})</el-descriptions-item>
+                    <el-descriptions-item label="官方链接" :span="2">{{ currentDetail.officialUrl || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="附件">{{ currentDetail.attachmentUrl || '无' }}</el-descriptions-item>
+                    <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark || '-' }}</el-descriptions-item>
+                </el-descriptions>
+                <div slot="footer">
+                    <el-button @click="detailVisible = false">关闭</el-button>
+                </div>
+            </el-dialog>
+
+            <!-- 驳回对话框 -->
+            <el-dialog title="驳回申报" :visible.sync="rejectVisible" width="500px">
+                <el-form :model="rejectForm" label-width="100px">
+                    <el-form-item label="驳回理由" required>
+                        <el-input type="textarea" v-model="rejectForm.auditRemark" :rows="4" placeholder="请输入驳回理由"></el-input>
+                    </el-form-item>
+                </el-form>
+                <div slot="footer">
+                    <el-button @click="rejectVisible = false">取消</el-button>
+                    <el-button type="danger" @click="confirmReject">确认驳回</el-button>
+                </div>
+            </el-dialog>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                pendingList: [],
+                detailVisible: false,
+                rejectVisible: false,
+                currentDetail: null,
+                rejectForm: {
+                    awardId: null,
+                    auditRemark: ''
+                }
+            },
+            created() {
+                this.loadPendingList();
+            },
+            methods: {
+                async loadPendingList() {
+                    try {
+                        const response = await axios.get('/edu/competition/pending-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.pendingList = response.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                viewDetail(row) {
+                    this.currentDetail = row;
+                    this.detailVisible = true;
+                },
+                approve(row) {
+                    this.$confirm('确认通过该申报吗？', '提示', { type: 'warning' }).then(async () => {
+                        try {
+                            const response = await axios.put(`/edu/competition/approve/${row.awardId}`, {}, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('审批通过');
+                                this.loadPendingList();
+                            }
+                        } catch (error) {
+                            this.$message.error('操作失败');
+                        }
+                    }).catch(() => {});
+                },
+                showRejectDialog(row) {
+                    this.rejectForm = { awardId: row.awardId, auditRemark: '' };
+                    this.rejectVisible = true;
+                },
+                async confirmReject() {
+                    if (!this.rejectForm.auditRemark) {
+                        this.$message.warning('请输入驳回理由');
+                        return;
+                    }
+                    try {
+                        const response = await axios.put(`/edu/competition/reject/${this.rejectForm.awardId}`, null, {
+                            params: { auditRemark: this.rejectForm.auditRemark },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('已驳回');
+                            this.rejectVisible = false;
+                            this.loadPendingList();
+                        }
+                    } catch (error) {
+                        this.$message.error('操作失败');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

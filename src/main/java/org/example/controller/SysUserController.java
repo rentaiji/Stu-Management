@@ -19,7 +19,13 @@ public class SysUserController {
     private SysUserService userService;
     
     @Autowired(required = false)
+    private org.example.mapper.SysDepartmentMapper departmentMapper;
+    
+    @Autowired(required = false)
     private org.example.mapper.EduStudentExtMapper eduStudentExtMapper;
+    
+    @Autowired(required = false)
+    private org.example.service.SysLoginLogService loginLogService;
     
     /**
      * 解析日期字符串，支持多种格式
@@ -44,12 +50,50 @@ public class SysUserController {
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> params) {
         String account = params.get("account");
         String password = params.get("password");
-        String token = userService.login(account, password);
-        SysUser user = userService.getUserByUsername(account);
-        Map<String, Object> data = new HashMap<>();
-        data.put("token", token);
-        data.put("user", user);
-        return Result.success(data);
+        
+        // 获取请求信息
+        javax.servlet.http.HttpServletRequest request = 
+            ((org.springframework.web.context.request.ServletRequestAttributes) 
+            org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+        String ipAddress = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        
+        try {
+            String token = userService.login(account, password);
+            SysUser user = userService.getUserByUsername(account);
+            
+            // 记录成功登录日志
+            if (loginLogService != null && user != null) {
+                org.example.entity.SysLoginLog log = new org.example.entity.SysLoginLog();
+                log.setUserId(user.getUserId());
+                log.setUsername(user.getUserName());
+                log.setRealName(user.getRealName());
+                log.setUserType(user.getUserType());
+                log.setIpAddress(ipAddress);
+                log.setUserAgent(userAgent);
+                log.setLoginStatus("成功");
+                log.setOperation("用户登录");
+                loginLogService.save(log);
+            }
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("token", token);
+            data.put("user", user);
+            return Result.success(data);
+        } catch (Exception e) {
+            // 记录失败登录日志
+            if (loginLogService != null) {
+                org.example.entity.SysLoginLog log = new org.example.entity.SysLoginLog();
+                log.setUsername(account);
+                log.setIpAddress(ipAddress);
+                log.setUserAgent(userAgent);
+                log.setLoginStatus("失败");
+                log.setFailReason(e.getMessage());
+                log.setOperation("登录失败");
+                loginLogService.save(log);
+            }
+            return Result.error("账号或密码错误");
+        }
     }
 
     @PostMapping("/register")
@@ -78,7 +122,20 @@ public class SysUserController {
         if (userType != null && !userType.isEmpty()) {
             wrapper.eq(SysUser::getUserType, userType);
         }
-        return Result.success(userService.list(wrapper));
+        java.util.List<SysUser> users = userService.list(wrapper);
+        // 关联院系名称
+        if (departmentMapper != null) {
+            users.forEach(user -> {
+                if (user.getDeptId() != null) {
+                    org.example.entity.SysDepartment dept = departmentMapper.selectById(user.getDeptId());
+                    if (dept != null) {
+                        // 使用动态代理添加 deptName 字段
+                        user.setRemark(dept.getDeptName()); // 临时借用 remark 字段存储
+                    }
+                }
+            });
+        }
+        return Result.success(users);
     }
 
     @PostMapping
@@ -269,6 +326,22 @@ public class SysUserController {
 
     @DeleteMapping("/{userId}")
     public Result<Boolean> delete(@PathVariable Long userId) {
+        // 如果是教师，级联删除人事档案
+        SysUser user = userService.getById(userId);
+        if (user != null && "1".equals(user.getUserType())) {
+            try {
+                org.example.mapper.HrEmployeeArchiveMapper archiveMapper = 
+                    org.example.config.ApplicationContextHolder.getBean(org.example.mapper.HrEmployeeArchiveMapper.class);
+                if (archiveMapper != null) {
+                    com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<org.example.entity.HrEmployeeArchive> wrapper = 
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+                    wrapper.eq(org.example.entity.HrEmployeeArchive::getUserId, userId);
+                    archiveMapper.delete(wrapper);
+                }
+            } catch (Exception e) {
+                // 档案不存在或删除失败，继续删除用户
+            }
+        }
         return Result.success(userService.removeById(userId));
     }
 

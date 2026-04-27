@@ -67,8 +67,41 @@
             <div class="main-content">
                 <!-- 首页 -->
                 <div v-if="currentPage === 'dashboard'" class="card">
-                    <h2>欢迎使用系统</h2>
-                    <p>请选择左侧菜单进行操作</p>
+                    <h2>学生工作台</h2>
+                    
+                    <!-- 学习统计 -->
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">学习统计</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.courseCount }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">课程总数</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.thisWeekCourses }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">本周待上课数</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.averageScore }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">我的均分</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 竞赛申报统计 -->
+                    <h3 style="margin-top: 30px; margin-bottom: 10px; color: #fa709a;">竞赛申报</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.competitionApproved }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">竞赛通过</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.competitionPending }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">竞赛待审核</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; padding: 20px; text-align: center; border-radius: 8px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                            <h3 style="font-size: 32px; margin-bottom: 5px;">{{ dashboardStats.competitionRejected }}</h3>
+                            <p style="font-size: 14px; opacity: 0.9;">竞赛被打回</p>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- 个人信息 -->
@@ -409,7 +442,15 @@
                 competitionDialogVisible: false,
                 competitionForm: { competitionName: '', competitionType: '0', level: '0', teamMembers: '', description: '' },
                 profileForm: { phone: '', email: '', homeAddress: '', emergencyContact: '', emergencyPhone: '' },
-                passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' }
+                passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' },
+                dashboardStats: {
+                    courseCount: 0,
+                    thisWeekCourses: 0,
+                    averageScore: 0,
+                    competitionApproved: 0,
+                    competitionPending: 0,
+                    competitionRejected: 0
+                }
             },
             created() {
                 const user = localStorage.getItem('user');
@@ -417,6 +458,8 @@
                     this.currentUser = JSON.parse(user);
                     // 加载学生详细信息
                     this.loadStudentProfile();
+                    // 加载首页统计
+                    this.loadDashboardStats();
                 } else {
                     this.$message.error('未登录，请先登录');
                     window.location.href = '/index.html';
@@ -449,7 +492,55 @@
                         console.error('加载学生信息失败', error);
                     }
                 },
+                async loadDashboardStats() {
+                    try {
+                        // 加载课程总数
+                        const coursesRes = await axios.get('/edu/course/my-courses', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (coursesRes.data.code === 200) {
+                            const myCourses = coursesRes.data.data || [];
+                            this.dashboardStats.courseCount = myCourses.length;
+                            
+                            // 计算本周待上课数(简化为已选课程数)
+                            this.dashboardStats.thisWeekCourses = myCourses.filter(c => c.selectStatus === '1').length;
+                        }
+                        
+                        // 加载成绩并计算均分
+                        const scoresRes = await axios.get('/edu/score/my-scores', {
+                            params: { studentId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (scoresRes.data.code === 200) {
+                            const scores = scoresRes.data.data || [];
+                            if (scores.length > 0) {
+                                const totalScore = scores.reduce((sum, s) => sum + (parseFloat(s.totalScore) || 0), 0);
+                                this.dashboardStats.averageScore = (totalScore / scores.length).toFixed(1);
+                            } else {
+                                this.dashboardStats.averageScore = 0;
+                            }
+                        }
+                        
+                        // 加载竞赛申报统计
+                        const competitionsRes = await axios.get('/edu/competition/my-list', {
+                            params: { studentId: this.currentUser.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (competitionsRes.data.code === 200) {
+                            const competitions = competitionsRes.data.data || [];
+                            this.dashboardStats.competitionApproved = competitions.filter(c => c.status === '已通过').length;
+                            this.dashboardStats.competitionPending = competitions.filter(c => c.status === '待审核' || !c.status).length;
+                            this.dashboardStats.competitionRejected = competitions.filter(c => c.status === '已驳回').length;
+                        }
+                    } catch (error) {
+                        console.error('加载首页统计失败', error);
+                    }
+                },
                 navigateTo(page) {
+                    if (page === 'competition') {
+                        window.location.href = '/competition-award.html';
+                        return;
+                    }
                     this.currentPage = page;
                     this.activeMenu = page;
                     if (page === 'course') {

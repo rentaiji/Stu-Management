@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>竞赛获奖申报</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', Arial, sans-serif; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #409EFF; color: #303133; }
+        .form-section { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <!-- 头部 -->
+            <div class="card">
+                <h2>竞赛获奖申报</h2>
+                <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+                    <el-tab-pane label="竞赛申报" name="general"></el-tab-pane>
+                    <el-tab-pane label="我的申报" name="mylist"></el-tab-pane>
+                </el-tabs>
+            </div>
+
+            <!-- 通用竞赛表单 -->
+            <div v-if="activeTab === 'general'" class="card">
+                <el-form :model="generalForm" label-width="120px">
+                    <!-- 学生信息（自动带出） -->
+                    <div class="form-section">
+                        <div class="section-title">学生基本信息</div>
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-form-item label="学生姓名">
+                                    <el-input v-model="userInfo.realName" disabled></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="学号">
+                                    <el-input v-model="userInfo.userName" disabled></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="学院">
+                                    <el-input v-model="deptName" disabled></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-form-item label="专业">
+                                    <el-input v-model="majorName" disabled placeholder="暂无"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="年级">
+                                    <el-input v-model="gradeName" disabled placeholder="暂无"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 竞赛信息 -->
+                    <div class="form-section">
+                        <div class="section-title">竞赛信息</div>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="竞赛名称" required>
+                                    <el-input v-model="generalForm.competitionName" placeholder="例：挑战杯"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="主办单位">
+                                    <el-input v-model="generalForm.hostInstitution" placeholder="例：教育部"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-form-item label="获奖级别" required>
+                                    <el-select v-model="generalForm.awardLevel" style="width: 100%;">
+                                        <el-option label="国家级" value="国家级"></el-option>
+                                        <el-option label="省部级" value="省部级"></el-option>
+                                        <el-option label="校级" value="校级"></el-option>
+                                        <el-option label="院级" value="院级"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="获奖等级" required>
+                                    <el-select v-model="generalForm.awardRank" style="width: 100%;">
+                                        <el-option label="一等奖" value="一等奖"></el-option>
+                                        <el-option label="二等奖" value="二等奖"></el-option>
+                                        <el-option label="三等奖" value="三等奖"></el-option>
+                                        <el-option label="金奖" value="金奖"></el-option>
+                                        <el-option label="银奖" value="银奖"></el-option>
+                                        <el-option label="铜奖" value="铜奖"></el-option>
+                                        <el-option label="优秀奖" value="优秀奖"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="获奖级别细分">
+                                    <el-select v-model="generalForm.awardGrade" style="width: 100%;">
+                                        <el-option label="A类" value="A类"></el-option>
+                                        <el-option label="B类" value="B类"></el-option>
+                                        <el-option label="C类" value="C类"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="项目名称">
+                                    <el-input v-model="generalForm.projectName"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 团队信息 -->
+                    <div class="form-section">
+                        <div class="section-title">团队信息</div>
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-form-item label="是否团队奖" required>
+                                    <el-radio-group v-model="generalForm.isTeamAward">
+                                        <el-radio :label="0">个人奖</el-radio>
+                                        <el-radio :label="1">团队奖</el-radio>
+                                    </el-radio-group>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8" v-if="generalForm.isTeamAward === 1">
+                                <el-form-item label="团队排名">
+                                    <el-select v-model="generalForm.teamRank" style="width: 100%;">
+                                        <el-option label="第一作者" value="第一作者"></el-option>
+                                        <el-option label="第二作者" value="第二作者"></el-option>
+                                        <el-option label="成员" value="成员"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8" v-if="generalForm.isTeamAward === 1">
+                                <el-form-item label="团队人数">
+                                    <el-input-number v-model="generalForm.teamSize" :min="1" style="width: 100%;"></el-input-number>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20" v-if="generalForm.isTeamAward === 1">
+                            <el-col :span="24">
+                                <el-form-item label="团队成员">
+                                    <el-input v-model="generalForm.teamMembers" placeholder="多人用逗号分隔"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 获奖信息 -->
+                    <div class="form-section">
+                        <div class="section-title">获奖信息</div>
+                        <el-row :gutter="20">
+                            <el-col :span="8">
+                                <el-form-item label="获奖时间" required>
+                                    <el-date-picker v-model="generalForm.awardTime" type="month" placeholder="选择年月" style="width: 100%;" value-format="yyyyMM"></el-date-picker>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="证书编号">
+                                    <el-input v-model="generalForm.certificateNo"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-form-item label="赛道/组别">
+                                    <el-input v-model="generalForm.trackGroup" placeholder="例：本科组"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 指导教师 -->
+                    <div class="form-section">
+                        <div class="section-title">指导教师</div>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="指导教师1姓名">
+                                    <el-input v-model="generalForm.instructor1Name"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="指导教师1部门">
+                                    <el-input v-model="generalForm.instructor1Dept"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="指导教师2姓名">
+                                    <el-input v-model="generalForm.instructor2Name"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="指导教师2部门">
+                                    <el-input v-model="generalForm.instructor2Dept"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- 补充信息 -->
+                    <div class="form-section">
+                        <div class="section-title">补充信息</div>
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <el-form-item label="官方链接">
+                                    <el-input v-model="generalForm.officialUrl"></el-input>
+                                </el-form-item>
+                            </el-col>
+                            <el-col :span="12">
+                                <el-form-item label="附件上传">
+                                    <el-upload
+                                        class="upload-demo"
+                                        action="#"
+                                        :auto-upload="false"
+                                        :on-change="handleFileChange"
+                                        :file-list="fileList"
+                                        accept=".pdf"
+                                        :limit="1">
+                                        <el-button size="small" type="primary">选择PDF文件</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传PDF文件</div>
+                                    </el-upload>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                        <el-row :gutter="20">
+                            <el-col :span="24">
+                                <el-form-item label="备注">
+                                    <el-input type="textarea" v-model="generalForm.remark" :rows="3"></el-input>
+                                </el-form-item>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <el-form-item>
+                        <el-button type="primary" @click="submitGeneral">提交</el-button>
+                        <el-button @click="resetGeneral">重置</el-button>
+                    </el-form-item>
+                </el-form>
+            </div>
+
+            <!-- 我的申报列表 -->
+            <div v-if="activeTab === 'mylist'" class="card">
+                <el-table :data="myList" style="width: 100%" @row-click="viewDetail" style="cursor: pointer;">
+                    <el-table-column prop="competitionName" label="竞赛名称" width="200"></el-table-column>
+                    <el-table-column prop="awardLevel" label="获奖级别" width="100"></el-table-column>
+                    <el-table-column prop="awardRank" label="获奖等级" width="100"></el-table-column>
+                    <el-table-column prop="awardTime" label="获奖时间" width="120"></el-table-column>
+                    <el-table-column prop="createTime" label="申请时间" width="160"></el-table-column>
+                    <el-table-column prop="auditTime" label="审批时间" width="160"></el-table-column>
+                    <el-table-column prop="isTeamAward" label="类型" width="80">
+                        <template slot-scope="scope">
+                            {{ scope.row.isTeamAward === 1 ? '团队' : '个人' }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template slot-scope="scope">
+                            <el-tag :type="scope.row.status === '已通过' ? 'success' : (scope.row.status === '已驳回' ? 'danger' : 'warning')">
+                                {{ scope.row.status || '待审核' }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200">
+                        <template slot-scope="scope">
+                            <el-button size="mini" type="primary" @click.stop="editItem(scope.row)">编辑</el-button>
+                            <el-button size="mini" type="danger" @click.stop="deleteItem(scope.row)">删除</el-button>
+                            <el-button size="mini" type="warning" @click.stop="resubmitItem(scope.row)" v-if="scope.row.status === '已驳回'">重新提交</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+
+            <!-- 详情对话框 -->
+            <el-dialog title="申报详情" :visible.sync="detailVisible" width="800px">
+                <el-descriptions :column="2" border v-if="currentDetail">
+                    <el-descriptions-item label="学生姓名">{{ currentDetail.realName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="学号">{{ currentDetail.userName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="学院">{{ currentDetail.deptName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="竞赛名称">{{ currentDetail.competitionName }}</el-descriptions-item>
+                    <el-descriptions-item label="主办单位">{{ currentDetail.hostInstitution || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖级别">{{ currentDetail.awardLevel }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖等级">{{ currentDetail.awardRank }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖级别细分">{{ currentDetail.awardGrade || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="项目名称">{{ currentDetail.projectName || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="是否团队奖">{{ currentDetail.isTeamAward === 1 ? '是' : '否' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队排名" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamRank || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队人数" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamSize || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="团队成员" :span="2" v-if="currentDetail.isTeamAward === 1">{{ currentDetail.teamMembers || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="获奖时间">{{ currentDetail.awardTime }}</el-descriptions-item>
+                    <el-descriptions-item label="证书编号">{{ currentDetail.certificateNo || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="赛道/组别">{{ currentDetail.trackGroup || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="指导教师1">{{ currentDetail.instructor1Name || '-' }} ({{ currentDetail.instructor1Dept || '-' }})</el-descriptions-item>
+                    <el-descriptions-item label="指导教师2">{{ currentDetail.instructor2Name || '-' }} ({{ currentDetail.instructor2Dept || '-' }})</el-descriptions-item>
+                    <el-descriptions-item label="官方链接" :span="2">{{ currentDetail.officialUrl || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="申请时间">{{ currentDetail.createTime || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="审批时间">{{ currentDetail.auditTime || '-' }}</el-descriptions-item>
+                    <el-descriptions-item label="附件" :span="2">
+                        <a v-if="currentDetail.attachmentUrl" :href="'/uploads/' + currentDetail.attachmentUrl" target="_blank" style="color: #409EFF;">
+                            <i class="el-icon-document"></i> {{ currentDetail.attachmentUrl }}
+                        </a>
+                        <span v-else>无</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="状态">
+                        <el-tag :type="currentDetail.status === '已通过' ? 'success' : (currentDetail.status === '已驳回' ? 'danger' : 'warning')">
+                            {{ currentDetail.status || '待审核' }}
+                        </el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="审核意见" :span="2" v-if="currentDetail.auditRemark">
+                        <span style="color: #F56C6C;">{{ currentDetail.auditRemark }}</span>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="备注" :span="2">{{ currentDetail.remark || '-' }}</el-descriptions-item>
+                </el-descriptions>
+                <div slot="footer">
+                    <el-button @click="detailVisible = false">关闭</el-button>
+                </div>
+            </el-dialog>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                activeTab: 'general',
+                userInfo: {},
+                deptName: '',
+                majorName: '',
+                gradeName: '',
+                fileList: [],
+                detailVisible: false,
+                currentDetail: null,
+                generalForm: {
+                    userId: null,
+                    competitionName: '',
+                    hostInstitution: '',
+                    awardLevel: '',
+                    awardRank: '',
+                    awardGrade: '',
+                    projectName: '',
+                    isTeamAward: 0,
+                    teamRank: '',
+                    teamMembers: '',
+                    teamSize: null,
+                    awardTime: '',
+                    certificateNo: '',
+                    trackGroup: '',
+                    instructor1Name: '',
+                    instructor1Dept: '',
+                    instructor2Name: '',
+                    instructor2Dept: '',
+                    officialUrl: '',
+                    remark: '',
+                    attachmentUrl: '',
+                    status: '待审核'
+                },
+                myList: []
+            },
+            created() {
+                const user = localStorage.getItem('user');
+                if (user) {
+                    this.userInfo = JSON.parse(user);
+                    this.generalForm.userId = this.userInfo.userId;
+                    // 加载院系名称
+                    this.loadDeptName();
+                } else {
+                    this.$message.error('未登录');
+                    window.location.href = '/index.html';
+                }
+                this.loadMyList();
+            },
+            methods: {
+                handleFileChange(file, fileList) {
+                    this.fileList = fileList;
+                    this.generalForm.attachmentUrl = file.name;
+                },
+                async loadDeptName() {
+                    if (this.userInfo.deptId) {
+                        try {
+                            const response = await axios.get(`/sys/dept/${this.userInfo.deptId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200 && response.data.data) {
+                                this.deptName = response.data.data.deptName;
+                            }
+                        } catch (error) {
+                            console.error('加载院系失败:', error);
+                        }
+                    }
+                },
+                handleTabClick(tab) {
+                    if (tab.name === 'mylist') {
+                        this.loadMyList();
+                    }
+                },
+                viewDetail(row) {
+                    this.currentDetail = row;
+                    this.detailVisible = true;
+                },
+                async loadMyList() {
+                    try {
+                        const response = await axios.get('/edu/competition/list', {
+                            params: { studentId: this.userInfo.userId },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.myList = response.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                async submitGeneral() {
+                    if (!this.generalForm.competitionName || !this.generalForm.awardLevel || !this.generalForm.awardRank || !this.generalForm.awardTime) {
+                        this.$message.warning('请填写必填项');
+                        return;
+                    }
+                    // 确保 userId 有值
+                    const userId = this.userInfo.userId || this.userInfo.user_id;
+                    console.log('用户信息:', this.userInfo);
+                    console.log('userId:', userId);
+                    
+                    if (!userId) {
+                        this.$message.error('用户信息异常，请重新登录');
+                        return;
+                    }
+                    // 适配新接口字段
+                    const data = {
+                        userId: userId,
+                        competitionName: this.generalForm.competitionName,
+                        hostInstitution: this.generalForm.hostInstitution,
+                        awardLevel: this.generalForm.awardLevel,
+                        awardRank: this.generalForm.awardRank,
+                        awardGrade: this.generalForm.awardGrade,
+                        projectName: this.generalForm.projectName,
+                        isTeamAward: this.generalForm.isTeamAward,
+                        teamRank: this.generalForm.teamRank,
+                        teamMembers: this.generalForm.teamMembers,
+                        teamSize: this.generalForm.teamSize,
+                        awardTime: this.generalForm.awardTime,
+                        certificateNo: this.generalForm.certificateNo,
+                        trackGroup: this.generalForm.trackGroup,
+                        instructor1Name: this.generalForm.instructor1Name,
+                        instructor1Dept: this.generalForm.instructor1Dept,
+                        instructor2Name: this.generalForm.instructor2Name,
+                        instructor2Dept: this.generalForm.instructor2Dept,
+                        officialUrl: this.generalForm.officialUrl,
+                        remark: this.generalForm.remark,
+                        attachmentUrl: this.generalForm.attachmentUrl,
+                        status: '待审核'
+                    };
+                    console.log('提交数据:', data);
+                    
+                    try {
+                        let response;
+                        // 判断是新增还是更新（重新提交）
+                        if (this.generalForm.awardId) {
+                            data.awardId = this.generalForm.awardId;
+                            console.log('执行更新操作');
+                            response = await axios.put('/edu/competition', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        } else {
+                            console.log('执行新增操作');
+                            response = await axios.post('/edu/competition', data, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        }
+                        console.log('响应结果:', response.data);
+                        
+                        if (response.data.code === 200) {
+                            this.$message.success(this.generalForm.awardId ? '重新提交成功' : '提交成功');
+                            this.resetGeneral();
+                            this.activeTab = 'mylist';
+                            this.loadMyList();
+                        } else {
+                            this.$message.error(response.data.message || '操作失败');
+                        }
+                    } catch (error) {
+                        console.error('提交失败:', error);
+                        this.$message.error(error.response?.data?.message || '操作失败');
+                    }
+                },
+                resetGeneral() {
+                    this.fileList = [];
+                    this.generalForm = {
+                        userId: this.userInfo.userId,
+                        competitionName: '',
+                        hostInstitution: '',
+                        awardLevel: '',
+                        awardRank: '',
+                        awardGrade: '',
+                        projectName: '',
+                        isTeamAward: 0,
+                        teamRank: '',
+                        teamMembers: '',
+                        teamSize: null,
+                        awardTime: '',
+                        certificateNo: '',
+                        trackGroup: '',
+                        instructor1Name: '',
+                        instructor1Dept: '',
+                        instructor2Name: '',
+                        instructor2Dept: '',
+                        officialUrl: '',
+                        remark: '',
+                        attachmentUrl: '',
+                        status: '待审核'
+                    };
+                },
+                editItem(row) {
+                    this.generalForm = { ...row };
+                    this.activeTab = 'general';
+                },
+                async deleteItem(row) {
+                    this.$confirm('确定删除吗？', '提示', { type: 'warning' }).then(async () => {
+                        try {
+                            const response = await axios.delete(`/edu/competition/${row.awardId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('删除成功');
+                                this.loadMyList();
+                            }
+                        } catch (error) {
+                            this.$message.error('删除失败');
+                        }
+                    });
+                },
+                resubmitItem(row) {
+                    this.generalForm = JSON.parse(JSON.stringify(row));
+                    this.generalForm.status = '待审核';
+                    this.generalForm.auditRemark = '';
+                    this.activeTab = 'general';
+                    this.$message.info('请修改后重新提交');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

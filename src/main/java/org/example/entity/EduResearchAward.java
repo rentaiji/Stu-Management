@@ -35,4 +35,6 @@ public class EduResearchAward {
     private String mainAchievement;
     
     private String remark;
+    
+    private String attachmentUrl; // 附件PDF路径
 }

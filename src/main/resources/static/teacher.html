@@ -33,7 +33,7 @@
         <div class="container">
             <div class="sidebar">
                 <el-menu :default-active="activeMenu" @select="navigateTo" background-color="#fff" text-color="#333" active-text-color="#667eea">
-                    <el-menu-item v-if="!hasPermission('academic:course:release')" index="dashboard">
+                    <el-menu-item index="dashboard">
                         <i class="el-icon-s-home"></i>
                         <span>首页</span>
                     </el-menu-item>
@@ -57,24 +57,92 @@
                         <i class="el-icon-document-checked"></i>
                         <span>科研审核</span>
                     </el-menu-item>
+                    <el-menu-item v-if="hasPermission('academic:course:release')" index="competition-approve">
+                        <i class="el-icon-trophy"></i>
+                        <span>竞赛审批</span>
+                    </el-menu-item>
                 </el-menu>
             </div>
             <div class="main-content">
                 <!-- 首页 -->
                 <div v-if="currentPage === 'dashboard' && !hasPermission('academic:course:release')" class="card">
                     <h2>工作台概览</h2>
-                    <div style="margin-top: 20px;">
-                        <div class="stat-card">
-                            <h3>{{ myCourses.length }}</h3>
+                    
+                    <!-- 教学统计 -->
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">教学统计</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px;">
+                            <h3>{{ dashboardStats.courseCount }}</h3>
                             <p>授课门数</p>
                         </div>
-                        <div class="stat-card">
-                            <h3>{{ totalStudents }}</h3>
+                        <div class="stat-card" style="flex: 1; min-width: 180px;">
+                            <h3>{{ dashboardStats.studentCount }}</h3>
                             <p>学生总数</p>
                         </div>
-                        <div class="stat-card">
-                            <h3>{{ pendingScores }}</h3>
+                        <div class="stat-card" style="flex: 1; min-width: 180px;">
+                            <h3>{{ dashboardStats.pendingScoreCount }}</h3>
                             <p>待录入成绩</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px;">
+                            <h3>{{ dashboardStats.enteredScoreCount }}</h3>
+                            <p>已录入成绩</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 科研统计 -->
+                    <h3 style="margin-top: 30px; margin-bottom: 10px; color: #f5576c;">科研统计</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <h3>{{ dashboardStats.researchApproved }}</h3>
+                            <p>科研通过</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <h3>{{ dashboardStats.researchPending }}</h3>
+                            <p>科研待审核</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <h3>{{ dashboardStats.researchRejected }}</h3>
+                            <p>科研被打回</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 教务管理员首页 -->
+                <div v-if="currentPage === 'dashboard' && hasPermission('academic:course:release')" class="card">
+                    <h2>教务管理工作台</h2>
+                    
+                    <!-- 课程管理统计 -->
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">课程管理</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px;">
+                            <h3>{{ adminDashboardStats.publishedCourseCount }}</h3>
+                            <p>发布课程数</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 科研审核统计 -->
+                    <h3 style="margin-top: 30px; margin-bottom: 10px; color: #f5576c;">科研审核</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <h3>{{ adminDashboardStats.researchPending }}</h3>
+                            <p>科研待审核</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <h3>{{ adminDashboardStats.researchAudited }}</h3>
+                            <p>科研已审核</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 竞赛审批统计 -->
+                    <h3 style="margin-top: 30px; margin-bottom: 10px; color: #fa709a;">竞赛审批</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+                            <h3>{{ adminDashboardStats.competitionPending }}</h3>
+                            <p>竞赛待审批</p>
+                        </div>
+                        <div class="stat-card" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                            <h3>{{ adminDashboardStats.competitionApproved }}</h3>
+                            <p>竞赛已审批</p>
                         </div>
                     </div>
                 </div>
@@ -167,7 +235,7 @@
                         <el-button type="primary" @click="loadScores">查询</el-button>
                         <el-button type="success" @click="showScoreInputDialog" style="float: right;">批量录入成绩</el-button>
                     </div>
-                    <el-table :data="scores" style="width: 100%; margin-top: 10px;">
+                    <el-table :data="scores" style="width: 100%; margin-top: 10px;" v-loading="scoreLoading">
                         <el-table-column prop="studentNo" label="学号"></el-table-column>
                         <el-table-column prop="studentName" label="姓名"></el-table-column>
                         <el-table-column prop="usualScore" label="平时成绩" width="100">
@@ -193,6 +261,7 @@
                                 {{ calculateTotal(scope.row) }}
                             </template>
                         </el-table-column>
+                        <el-table-column prop="createTime" label="申请时间" width="160"></el-table-column>
                         <el-table-column prop="status" label="状态" width="100">
                             <template slot-scope="scope">
                                 <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
@@ -277,22 +346,24 @@
                     <el-table :data="myApplications" style="width: 100%;">
                         <el-table-column prop="title" label="标题"></el-table-column>
                         <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
-                        <el-table-column prop="statusName" label="状态" width="100">
+                        <el-table-column prop="status" label="状态" width="100">
                             <template slot-scope="scope">
-                                <el-tag :type="getStatusTagType(scope.row.status)">{{ scope.row.statusName }}</el-tag>
+                                <el-tag :type="getStatusTagType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
                             </template>
                         </el-table-column>
                         <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
-                        <el-table-column label="操作" width="150">
+                        <el-table-column label="操作" width="250">
                             <template slot-scope="scope">
                                 <el-button size="mini" @click="viewApplicationDetail(scope.row.applicationId)">查看详情</el-button>
+                                <el-button size="mini" type="warning" @click="withdrawApplication(scope.row)" v-if="scope.row.status === '0'">撤销</el-button>
+                                <el-button size="mini" type="primary" @click="editApplication(scope.row)" v-if="scope.row.status === '2'">修改重交</el-button>
                             </template>
                         </el-table-column>
                     </el-table>
                     <el-empty v-if="myApplications.length === 0" description="暂无申报记录"></el-empty>
                     
                     <!-- 申报对话框 -->
-                    <el-dialog title="科研申报" :visible.sync="submitDialogVisible" width="70%" @close="resetForm">
+                    <el-dialog :title="editingApplicationId ? '编辑科研申报' : '科研申报'" :visible.sync="submitDialogVisible" width="70%" @close="resetForm">
                         <el-form :model="applicationForm" label-width="140px">
                             <el-form-item label="申报类型" required>
                                 <el-select v-model="applicationForm.researchType" placeholder="请选择" style="width: 100%;" @change="onTypeChange">
@@ -327,6 +398,22 @@
                                 <el-form-item label="奖励级别"><el-input v-model="sciForm.awardLevel"></el-input></el-form-item>
                                 <el-form-item label="论文归属"><el-input v-model="sciForm.paperAffiliation"></el-input></el-form-item>
                                 <el-form-item label="备注"><el-input v-model="sciForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                                <el-form-item label="附件上传">
+                                    <el-upload
+                                        class="upload-demo"
+                                        action="#"
+                                        :auto-upload="false"
+                                        :on-change="handleFileUpload"
+                                        :limit="1"
+                                        accept=".pdf"
+                                        :file-list="sciForm.attachmentUrl ? [{name: sciForm.attachmentUrl.split('/').pop(), url: sciForm.attachmentUrl}] : []">
+                                        <el-button size="small" type="primary">点击上传PDF</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传pdf文件，且不超过50MB</div>
+                                    </el-upload>
+                                    <div v-if="sciForm.attachmentUrl" style="margin-top: 5px; color: #67c23a;">
+                                        <i class="el-icon-check"></i> 已上传: {{ sciForm.attachmentUrl }}
+                                    </div>
+                                </el-form-item>
                             </template>
                             
                             <!-- 卓越期刊论文字段 -->
@@ -342,6 +429,13 @@
                                 </el-row>
                                 <el-form-item label="论文归属"><el-input v-model="excellentForm.paperAffiliation"></el-input></el-form-item>
                                 <el-form-item label="备注"><el-input v-model="excellentForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                                <el-form-item label="附件上传">
+                                    <el-upload class="upload-demo" action="#" :auto-upload="false" :on-change="handleFileUpload" :limit="1" accept=".pdf" :file-list="excellentForm.attachmentUrl ? [{name: excellentForm.attachmentUrl.split('/').pop(), url: excellentForm.attachmentUrl}] : []">
+                                        <el-button size="small" type="primary">点击上传PDF</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传pdf文件</div>
+                                    </el-upload>
+                                    <div v-if="excellentForm.attachmentUrl" style="margin-top: 5px; color: #67c23a;"><i class="el-icon-check"></i> 已上传: {{ excellentForm.attachmentUrl }}</div>
+                                </el-form-item>
                             </template>
                             
                             <!-- CCF会议论文字段 -->
@@ -357,6 +451,13 @@
                                 <el-form-item label="论文归属"><el-input v-model="ccfForm.paperAffiliation"></el-input></el-form-item>
                                 <el-form-item label="积分"><el-input-number v-model="ccfForm.points" :min="0" :precision="2"></el-input-number></el-form-item>
                                 <el-form-item label="备注"><el-input v-model="ccfForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                                <el-form-item label="附件上传">
+                                    <el-upload class="upload-demo" action="#" :auto-upload="false" :on-change="handleFileUpload" :limit="1" accept=".pdf" :file-list="ccfForm.attachmentUrl ? [{name: ccfForm.attachmentUrl.split('/').pop(), url: ccfForm.attachmentUrl}] : []">
+                                        <el-button size="small" type="primary">点击上传PDF</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传pdf文件</div>
+                                    </el-upload>
+                                    <div v-if="ccfForm.attachmentUrl" style="margin-top: 5px; color: #67c23a;"><i class="el-icon-check"></i> 已上传: {{ ccfForm.attachmentUrl }}</div>
+                                </el-form-item>
                             </template>
                             
                             <!-- 科研奖励字段 -->
@@ -374,6 +475,13 @@
                                 <el-form-item label="证书号"><el-input v-model="awardForm.certificateNo"></el-input></el-form-item>
                                 <el-form-item label="主要成果"><el-input v-model="awardForm.mainAchievement" type="textarea"></el-input></el-form-item>
                                 <el-form-item label="备注"><el-input v-model="awardForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                                <el-form-item label="附件上传">
+                                    <el-upload class="upload-demo" action="#" :auto-upload="false" :on-change="handleFileUpload" :limit="1" accept=".pdf" :file-list="awardForm.attachmentUrl ? [{name: awardForm.attachmentUrl.split('/').pop(), url: awardForm.attachmentUrl}] : []">
+                                        <el-button size="small" type="primary">点击上传PDF</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传pdf文件</div>
+                                    </el-upload>
+                                    <div v-if="awardForm.attachmentUrl" style="margin-top: 5px; color: #67c23a;"><i class="el-icon-check"></i> 已上传: {{ awardForm.attachmentUrl }}</div>
+                                </el-form-item>
                             </template>
                             
                             <!-- 科研项目字段 -->
@@ -392,11 +500,18 @@
                                     <el-col :span="12"><el-form-item label="截止日期"><el-date-picker v-model="projectForm.contractEndDate" type="date" style="width: 100%;"></el-date-picker></el-form-item></el-col>
                                 </el-row>
                                 <el-form-item label="备注"><el-input v-model="projectForm.remark" type="textarea" :rows="3"></el-input></el-form-item>
+                                <el-form-item label="附件上传">
+                                    <el-upload class="upload-demo" action="#" :auto-upload="false" :on-change="handleFileUpload" :limit="1" accept=".pdf" :file-list="projectForm.attachmentUrl ? [{name: projectForm.attachmentUrl.split('/').pop(), url: projectForm.attachmentUrl}] : []">
+                                        <el-button size="small" type="primary">点击上传PDF</el-button>
+                                        <div slot="tip" class="el-upload__tip">只能上传pdf文件</div>
+                                    </el-upload>
+                                    <div v-if="projectForm.attachmentUrl" style="margin-top: 5px; color: #67c23a;"><i class="el-icon-check"></i> 已上传: {{ projectForm.attachmentUrl }}</div>
+                                </el-form-item>
                             </template>
                         </el-form>
                         <span slot="footer">
                             <el-button @click="submitDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="submitApplication">提交申报</el-button>
+                            <el-button type="primary" @click="submitApplication">{{ editingApplicationId ? '重新提交' : '提交申报' }}</el-button>
                         </span>
                     </el-dialog>
                     
@@ -410,6 +525,17 @@
                                 <el-descriptions-item label="提交时间">{{ applicationDetail.application.createTime }}</el-descriptions-item>
                                 <el-descriptions-item label="审核备注" :span="2">{{ applicationDetail.application.auditRemark || '无' }}</el-descriptions-item>
                             </el-descriptions>
+                            
+                            <!-- 附件下载 -->
+                            <div v-if="applicationDetail && applicationDetail.detail && applicationDetail.detail.attachmentUrl" style="margin-top: 20px;">
+                                <h4>附件PDF</h4>
+                                <el-button type="primary" icon="el-icon-download" @click="downloadPdf(applicationDetail.detail.attachmentUrl)">点击下载PDF</el-button>
+                                <div style="margin-top: 10px; color: #909399;">文件路径: {{ applicationDetail.detail.attachmentUrl }}</div>
+                            </div>
+                            <div v-else-if="applicationDetail && applicationDetail.detail" style="margin-top: 20px; color: #f56c6c;">
+                                <i class="el-icon-warning"></i> 该申报没有上传附件
+                            </div>
+                            
                             <h4 style="margin-top: 20px;">详细信息</h4>
                             <pre style="background: #f5f7fa; padding: 15px; border-radius: 4px; overflow: auto;">{{ JSON.stringify(applicationDetail.detail, null, 2) }}</pre>
                         </div>
@@ -419,22 +545,50 @@
                 <!-- 科研审核（仅教务老师） -->
                 <div v-if="currentPage === 'research-audit'" class="card">
                     <h2>科研申报审核</h2>
-                    <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
-                    <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
-                    <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
-                        <el-table-column prop="title" label="标题"></el-table-column>
-                        <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
-                        <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
-                        <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
-                        <el-table-column label="操作" width="200">
-                            <template slot-scope="scope">
-                                <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
-                                <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
-                                <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                    <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                    <el-tabs v-model="researchTab" @tab-click="handleResearchTabClick">
+                        <el-tab-pane label="未审批" name="pending">
+                            <el-button type="primary" @click="loadPendingResearch" icon="el-icon-refresh">刷新</el-button>
+                            <el-alert v-if="pendingResearch.length > 0" :title="'共 ' + pendingResearch.length + ' 条待审核申请'" type="warning" :closable="false" style="margin-top: 10px;"></el-alert>
+                            <el-table :data="pendingResearch" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="title" label="标题"></el-table-column>
+                                <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                                <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                                <el-table-column prop="createTime" label="提交时间" width="180"></el-table-column>
+                                <el-table-column label="操作" width="200">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                        <el-button size="mini" type="success" @click="auditResearch(scope.row, '1')">通过</el-button>
+                                        <el-button size="mini" type="danger" @click="showRejectResearchDialog(scope.row)">拒绝</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <el-empty v-if="pendingResearch.length === 0" description="暂无待审核申请"></el-empty>
+                        </el-tab-pane>
+                        <el-tab-pane label="已审批" name="approved">
+                            <el-button type="primary" @click="loadApprovedResearch" icon="el-icon-refresh">刷新</el-button>
+                            <el-alert v-if="approvedResearch.length > 0" :title="'共 ' + approvedResearch.length + ' 条已审批申请'" type="info" :closable="false" style="margin-top: 10px;"></el-alert>
+                            <el-table :data="approvedResearch" style="width: 100%; margin-top: 10px;">
+                                <el-table-column prop="title" label="标题"></el-table-column>
+                                <el-table-column prop="typeName" label="类型" width="120"></el-table-column>
+                                <el-table-column prop="teacherId" label="教师ID" width="100"></el-table-column>
+                                <el-table-column prop="status" label="状态" width="100">
+                                    <template slot-scope="scope">
+                                        <el-tag :type="scope.row.status === '1' ? 'success' : 'danger'">
+                                            {{ scope.row.status === '1' ? '已通过' : '已拒绝' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="auditRemark" label="审核意见" width="200"></el-table-column>
+                                <el-table-column prop="auditTime" label="审核时间" width="180"></el-table-column>
+                                <el-table-column label="操作" width="120">
+                                    <template slot-scope="scope">
+                                        <el-button size="mini" @click="viewResearchDetail(scope.row.applicationId)">查看详情</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                            <el-empty v-if="approvedResearch.length === 0" description="暂无已审批申请"></el-empty>
+                        </el-tab-pane>
+                    </el-tabs>
                     
                     <!-- 详情对话框 -->
                     <el-dialog title="申报详情" :visible.sync="researchDetailDialogVisible" width="70%">
@@ -529,6 +683,16 @@
                                     {{ researchDetail.detail.remark }}
                                 </el-descriptions-item>
                             </el-descriptions>
+                            
+                            <!-- 附件下载 -->
+                            <div v-if="researchDetail && researchDetail.detail && researchDetail.detail.attachmentUrl" style="margin-top: 20px;">
+                                <h4>附件PDF</h4>
+                                <el-button type="primary" icon="el-icon-download" @click="downloadPdf(researchDetail.detail.attachmentUrl)">点击下载PDF</el-button>
+                                <div style="margin-top: 10px; color: #909399;">文件路径: {{ researchDetail.detail.attachmentUrl }}</div>
+                            </div>
+                            <div v-else-if="researchDetail && researchDetail.detail" style="margin-top: 20px; color: #f56c6c;">
+                                <i class="el-icon-warning"></i> 该申报没有上传附件
+                            </div>
                         </div>
                     </el-dialog>
                     
@@ -539,6 +703,98 @@
                             <el-button @click="rejectResearchDialogVisible = false">取消</el-button>
                             <el-button type="primary" @click="confirmRejectResearch">确认拒绝</el-button>
                         </span>
+                    </el-dialog>
+                </div>
+
+                <!-- 竞赛审批（仅教务老师） -->
+                <div v-if="currentPage === 'competition-approve'" class="card">
+                    <h2>竞赛申报审批</h2>
+                    <el-tabs v-model="competitionTab" @tab-click="loadCompetitionList">
+                        <el-tab-pane label="待审批" name="pending"></el-tab-pane>
+                        <el-tab-pane label="已审批" name="approved"></el-tab-pane>
+                    </el-tabs>
+                    <el-table :data="competitionList" style="width: 100%; margin-top: 10px;">
+                        <el-table-column prop="competitionName" label="竞赛名称" width="200"></el-table-column>
+                        <el-table-column prop="awardLevel" label="获奖级别" width="100"></el-table-column>
+                        <el-table-column prop="awardRank" label="获奖等级" width="100"></el-table-column>
+                        <el-table-column prop="awardTime" label="获奖时间" width="120"></el-table-column>
+                        <el-table-column prop="userId" label="学生ID" width="100"></el-table-column>
+                        <el-table-column prop="isTeamAward" label="类型" width="80">
+                            <template slot-scope="scope">
+                                {{ scope.row.isTeamAward === 1 ? '团队' : '个人' }}
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="createTime" label="申请时间" width="160"></el-table-column>
+                        <el-table-column prop="status" label="状态" width="100">
+                            <template slot-scope="scope">
+                                <el-tag :type="scope.row.status === '已通过' ? 'success' : (scope.row.status === '已驳回' ? 'danger' : 'warning')">
+                                    {{ scope.row.status || '待审核' }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="250">
+                            <template slot-scope="scope">
+                                <el-button size="mini" @click="viewCompetitionDetail(scope.row)">详情</el-button>
+                                <el-button v-if="scope.row.status === '待审核'" size="mini" type="success" @click="approveCompetition(scope.row)">通过</el-button>
+                                <el-button v-if="scope.row.status === '待审核'" size="mini" type="danger" @click="showRejectCompetitionDialog(scope.row)">驳回</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                    
+                    <!-- 详情对话框 -->
+                    <el-dialog title="竞赛申报详情" :visible.sync="competitionDetailVisible" width="800px">
+                        <el-descriptions :column="2" border v-if="currentCompetition">
+                            <el-descriptions-item label="学生ID">{{ currentCompetition.userId }}</el-descriptions-item>
+                            <el-descriptions-item label="竞赛名称">{{ currentCompetition.competitionName }}</el-descriptions-item>
+                            <el-descriptions-item label="主办单位">{{ currentCompetition.hostInstitution || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="获奖级别">{{ currentCompetition.awardLevel }}</el-descriptions-item>
+                            <el-descriptions-item label="获奖等级">{{ currentCompetition.awardRank }}</el-descriptions-item>
+                            <el-descriptions-item label="获奖级别细分">{{ currentCompetition.awardGrade || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="项目名称">{{ currentCompetition.projectName || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="是否团队奖">{{ currentCompetition.isTeamAward === 1 ? '是' : '否' }}</el-descriptions-item>
+                            <el-descriptions-item label="团队排名" v-if="currentCompetition.isTeamAward === 1">{{ currentCompetition.teamRank || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="团队人数" v-if="currentCompetition.isTeamAward === 1">{{ currentCompetition.teamSize || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="团队成员" :span="2" v-if="currentCompetition.isTeamAward === 1">{{ currentCompetition.teamMembers || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="获奖时间">{{ currentCompetition.awardTime }}</el-descriptions-item>
+                            <el-descriptions-item label="证书编号">{{ currentCompetition.certificateNo || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="赛道/组别">{{ currentCompetition.trackGroup || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="指导教师1">{{ currentCompetition.instructor1Name || '-' }} ({{ currentCompetition.instructor1Dept || '-' }})</el-descriptions-item>
+                            <el-descriptions-item label="指导教师2">{{ currentCompetition.instructor2Name || '-' }} ({{ currentCompetition.instructor2Dept || '-' }})</el-descriptions-item>
+                            <el-descriptions-item label="官方链接" :span="2">{{ currentCompetition.officialUrl || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="申请时间">{{ currentCompetition.createTime || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="审批时间">{{ currentCompetition.auditTime || '-' }}</el-descriptions-item>
+                            <el-descriptions-item label="附件" :span="2">
+                                <a v-if="currentCompetition.attachmentUrl" :href="'/uploads/' + currentCompetition.attachmentUrl" target="_blank" style="color: #409EFF;">
+                                    <i class="el-icon-document"></i> {{ currentCompetition.attachmentUrl }}
+                                </a>
+                                <span v-else>无</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="状态">
+                                <el-tag :type="currentCompetition.status === '已通过' ? 'success' : (currentCompetition.status === '已驳回' ? 'danger' : 'warning')">
+                                    {{ currentCompetition.status || '待审核' }}
+                                </el-tag>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="审核意见" :span="2" v-if="currentCompetition.auditRemark">
+                                <span style="color: #F56C6C;">{{ currentCompetition.auditRemark }}</span>
+                            </el-descriptions-item>
+                            <el-descriptions-item label="备注" :span="2">{{ currentCompetition.remark || '-' }}</el-descriptions-item>
+                        </el-descriptions>
+                        <div slot="footer">
+                            <el-button @click="competitionDetailVisible = false">关闭</el-button>
+                        </div>
+                    </el-dialog>
+                    
+                    <!-- 驳回对话框 -->
+                    <el-dialog title="驳回申报" :visible.sync="rejectCompetitionVisible" width="500px">
+                        <el-form :model="rejectCompetitionForm" label-width="100px">
+                            <el-form-item label="驳回理由" required>
+                                <el-input type="textarea" v-model="rejectCompetitionForm.auditRemark" :rows="4" placeholder="请输入驳回理由"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <div slot="footer">
+                            <el-button @click="rejectCompetitionVisible = false">取消</el-button>
+                            <el-button type="danger" @click="confirmRejectCompetition">确认驳回</el-button>
+                        </div>
                     </el-dialog>
                 </div>
             </div>
@@ -566,14 +822,18 @@
                 scoreCourseId: null,
                 studentCourseId: null,
                 scoreInputList: [],
+                scoreLoading: false,
                 applicationForm: { researchType: 1 },
-                sciForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '' },
-                excellentForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' },
-                ccfForm: { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' },
-                awardForm: { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '' },
-                projectForm: { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '' },
+                sciForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' },
+                excellentForm: { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' },
+                ccfForm: { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' },
+                awardForm: { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '', attachmentUrl: '' },
+                projectForm: { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '', attachmentUrl: '' },
                 applicationDetail: null,
+                editingApplicationId: null, // 正在编辑的申请ID
                 pendingResearch: [],
+                approvedResearch: [],
+                researchTab: 'pending',
                 researchDetailDialogVisible: false,
                 rejectResearchDialogVisible: false,
                 researchDetail: null,
@@ -587,7 +847,29 @@
                 teacherList: [],
                 editingCourse: null,
                 totalStudents: 0,
-                pendingScores: 0
+                pendingScores: 0,
+                dashboardStats: {
+                    courseCount: 0,
+                    studentCount: 0,
+                    pendingScoreCount: 0,
+                    enteredScoreCount: 0,
+                    researchApproved: 0,
+                    researchPending: 0,
+                    researchRejected: 0
+                },
+                adminDashboardStats: {
+                    publishedCourseCount: 0,
+                    researchPending: 0,
+                    researchAudited: 0,
+                    competitionPending: 0,
+                    competitionApproved: 0
+                },
+                competitionTab: 'pending',
+                competitionList: [],
+                competitionDetailVisible: false,
+                rejectCompetitionVisible: false,
+                currentCompetition: null,
+                rejectCompetitionForm: { awardId: null, auditRemark: '' }
             },
             created() {
                 const user = localStorage.getItem('user');
@@ -596,9 +878,11 @@
                     this.loadUserPermissions();
                     this.loadMyCourses();
                     this.loadMyApplications();
-                    // 延迟加载学生名单，确保课程列表已加载完成
+                    // 如果是教务管理员,加载管理员首页统计
                     setTimeout(() => {
-                        if (this.myCourses && this.myCourses.length > 0) {
+                        if (this.hasPermission('academic:course:release')) {
+                            this.loadAdminDashboardStats();
+                        } else if (this.myCourses && this.myCourses.length > 0) {
                             this.studentCourseId = this.myCourses[0].courseId;
                             this.$nextTick(() => {
                                 this.loadCourseStudents();
@@ -636,6 +920,11 @@
                         this.loadMyApplications();
                     } else if (page === 'research-audit') {
                         this.loadPendingResearch();
+                        this.loadApprovedResearch();
+                    } else if (page === 'competition-approve') {
+                        this.loadCompetitionList();
+                    } else if (page === 'dashboard' && this.hasPermission('academic:course:release')) {
+                        this.loadAdminDashboardStats();
                     }
                 },
                 async loadMyCourses() {
@@ -646,20 +935,89 @@
                             response = await axios.get('/edu/course-release/list', {
                                 headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
                             });
+                            if (response.data.code === 200) {
+                                this.myCourses = response.data.data || [];
+                                this.adminDashboardStats.publishedCourseCount = this.myCourses.length;
+                            }
                         } else {
                             response = await axios.get('/edu/teacher/courses', {
                                 params: { teacherId: this.currentUser.userId },
                                 headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
                             });
-                        }
-                        
-                        if (response.data.code === 200) {
-                            this.myCourses = response.data.data || [];
-                            this.totalStudents = this.myCourses.reduce((sum, c) => sum + (c.selectedCount || 0), 0);
-                            this.pendingScores = this.myCourses.length;
+                            
+                            if (response.data.code === 200) {
+                                this.myCourses = response.data.data || [];
+                                this.dashboardStats.courseCount = this.myCourses.length;
+                                this.dashboardStats.studentCount = this.myCourses.reduce((sum, c) => sum + (c.selectedCount || 0), 0);
+                                // 加载成绩统计
+                                await this.loadScoreStats();
+                            }
                         }
                     } catch (error) {
                         console.error('加载课程失败', error);
+                    }
+                },
+                async loadScoreStats() {
+                    try {
+                        let pendingCount = 0;
+                        let enteredCount = 0;
+                        
+                        for (const course of this.myCourses) {
+                            const response = await axios.get(`/edu/score/course/${course.courseId}`, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                const scores = response.data.data || [];
+                                scores.forEach(score => {
+                                    if (score.status === '0' || score.status === '1') {
+                                        pendingCount++;
+                                    } else if (score.status === '2') {
+                                        enteredCount++;
+                                    }
+                                });
+                            }
+                        }
+                        
+                        this.dashboardStats.pendingScoreCount = pendingCount;
+                        this.dashboardStats.enteredScoreCount = enteredCount;
+                    } catch (error) {
+                        console.error('加载成绩统计失败', error);
+                    }
+                },
+                async loadAdminDashboardStats() {
+                    try {
+                        // 加载科研审核统计
+                        const researchPendingRes = await axios.get('/edu/research/pending-audit', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (researchPendingRes.data.code === 200) {
+                            this.adminDashboardStats.researchPending = (researchPendingRes.data.data || []).length;
+                        }
+                        
+                        const researchApprovedRes = await axios.get('/edu/research/approved-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (researchApprovedRes.data.code === 200) {
+                            this.adminDashboardStats.researchAudited = (researchApprovedRes.data.data || []).length;
+                        }
+                        
+                        // 加载竞赛审批统计
+                        const competitionPendingRes = await axios.get('/edu/competition/pending-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (competitionPendingRes.data.code === 200) {
+                            this.adminDashboardStats.competitionPending = (competitionPendingRes.data.data || []).length;
+                        }
+                        
+                        const competitionAllRes = await axios.get('/edu/competition/all-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (competitionAllRes.data.code === 200) {
+                            const allCompetitions = competitionAllRes.data.data || [];
+                            this.adminDashboardStats.competitionApproved = allCompetitions.filter(c => c.status === '已通过' || c.status === '已驳回').length;
+                        }
+                    } catch (error) {
+                        console.error('加载管理员统计数据失败', error);
                     }
                 },
                 showAddCourseDialog() {
@@ -820,15 +1178,25 @@
                         this.$message.warning('请选择课程');
                         return;
                     }
+                    this.scoreLoading = true;
                     try {
                         const response = await axios.get(`/edu/score/course/${this.scoreCourseId}`, {
                             headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
                         });
                         if (response.data.code === 200) {
                             this.scores = response.data.data || [];
+                            console.log('成绩数据:', this.scores);
+                            if (this.scores.length === 0) {
+                                this.$message.info('该课程暂无学生成绩记录，请点击“批量录入成绩”添加');
+                            } else {
+                                this.$message.success(`成功加载 ${this.scores.length} 条成绩记录`);
+                            }
                         }
                     } catch (error) {
-                        this.$message.error('加载成绩失败');
+                        console.error('加载成绩失败', error);
+                        this.$message.error(error.response?.data?.message || '加载成绩失败');
+                    } finally {
+                        this.scoreLoading = false;
                     }
                 },
                 showScoreInputDialog() {
@@ -1126,11 +1494,95 @@
                 },
                 resetForm() {
                     this.applicationForm = { researchType: 1 };
-                    this.sciForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '' };
-                    this.excellentForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' };
-                    this.ccfForm = { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '' };
-                    this.awardForm = { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '' };
-                    this.projectForm = { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '' };
+                    this.sciForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', sciZone: '', ccfZone: '', isRecommendedJournal: '0', isExcellentJournal: '0', isQingdaoFirstUnit: '0', isHighlyCited: '0', isEsiPaper: '0', awardLevel: '', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' };
+                    this.excellentForm = { paperTitle: '', journalName: '', authorInfo: '', correspondingAuthor: '', journalType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' };
+                    this.ccfForm = { paperTitle: '', conferenceName: '', firstAuthor: '', correspondingAuthor: '', conferenceType: '', isQingdaoFirstUnit: '0', paperAffiliation: '', points: 0, remark: '', attachmentUrl: '' };
+                    this.awardForm = { awardName: '', achievementName: '', awardLevel: '', awardDate: '', allWinners: '', issuingAuthority: '', awardGrade: '', unitRanking: 1, certificateNo: '', mainAchievement: '', remark: '', attachmentUrl: '' };
+                    this.projectForm = { projectNo: '', projectName: '', projectSource: '', leader: '', signYear: new Date().getFullYear(), contractStartDate: '', contractEndDate: '', contractAmount: 0, receivedAmount: 0, remark: '', attachmentUrl: '' };
+                    this.editingApplicationId = null;
+                },
+                // 文件上传处理
+                async handleFileUpload(file) {
+                    const formData = new FormData();
+                    formData.append('file', file.raw);
+                    
+                    try {
+                        const loading = this.$loading({
+                            lock: true,
+                            text: '正在上传...',
+                            spinner: 'el-icon-loading',
+                            background: 'rgba(0, 0, 0, 0.7)'
+                        });
+                        
+                        const response = await axios.post('/edu/research/upload', formData, {
+                            headers: {
+                                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+                        
+                        loading.close();
+                        
+                        if (response.data.code === 200) {
+                            const url = response.data.data;
+                            // 根据当前类型设置attachmentUrl
+                            const type = this.applicationForm.researchType;
+                            if (type === 1) this.sciForm.attachmentUrl = url;
+                            else if (type === 2) this.excellentForm.attachmentUrl = url;
+                            else if (type === 3) this.ccfForm.attachmentUrl = url;
+                            else if (type === 4) this.awardForm.attachmentUrl = url;
+                            else if (type === 5) this.projectForm.attachmentUrl = url;
+                            
+                            this.$message.success('上传成功');
+                        } else {
+                            this.$message.error(response.data.message || '上传失败');
+                        }
+                    } catch (error) {
+                        this.$message.error('上传失败：' + (error.response?.data?.message || error.message));
+                    }
+                },
+                // 编辑申请（被打回后重新提交）
+                async editApplication(row) {
+                    try {
+                        const response = await axios.get(`/edu/research/detail/${row.applicationId}`, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        
+                        if (response.data.code === 200) {
+                            const detail = response.data.data;
+                            this.editingApplicationId = row.applicationId;
+                            this.applicationForm.researchType = row.researchType;
+                            
+                            // 填充对应的表单数据
+                            if (row.researchType === 1) {
+                                this.sciForm = { ...detail.detail, attachmentUrl: detail.detail.attachmentUrl || '' };
+                            } else if (row.researchType === 2) {
+                                this.excellentForm = { ...detail.detail, attachmentUrl: detail.detail.attachmentUrl || '' };
+                            } else if (row.researchType === 3) {
+                                this.ccfForm = { ...detail.detail, attachmentUrl: detail.detail.attachmentUrl || '' };
+                            } else if (row.researchType === 4) {
+                                this.awardForm = { ...detail.detail, attachmentUrl: detail.detail.attachmentUrl || '' };
+                                // 处理日期格式
+                                if (this.awardForm.awardDate) {
+                                    this.awardForm.awardDate = new Date(this.awardForm.awardDate);
+                                }
+                            } else if (row.researchType === 5) {
+                                this.projectForm = { ...detail.detail, attachmentUrl: detail.detail.attachmentUrl || '' };
+                                // 处理日期格式
+                                if (this.projectForm.contractStartDate) {
+                                    this.projectForm.contractStartDate = new Date(this.projectForm.contractStartDate);
+                                }
+                                if (this.projectForm.contractEndDate) {
+                                    this.projectForm.contractEndDate = new Date(this.projectForm.contractEndDate);
+                                }
+                            }
+                            
+                            this.submitDialogVisible = true;
+                        }
+                    } catch (error) {
+                        console.error('加载详情失败', error);
+                        this.$message.error('加载详情失败');
+                    }
                 },
                 async submitApplication() {
                     try {
@@ -1169,15 +1621,29 @@
                             detailData = { ...this.projectForm, title: this.projectForm.projectName };
                         }
                         
-                        const response = await axios.post('/edu/research/submit', {
-                            researchType: type,
-                            detailData: detailData
-                        }, {
-                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
-                        });
+                        // 根据是新增还是更新调用不同接口
+                        let response;
+                        if (this.editingApplicationId) {
+                            // 更新模式
+                            response = await axios.put('/edu/research/update', {
+                                applicationId: this.editingApplicationId,
+                                researchType: type,
+                                detailData: detailData
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        } else {
+                            // 新增模式
+                            response = await axios.post('/edu/research/submit', {
+                                researchType: type,
+                                detailData: detailData
+                            }, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                        }
                         
                         if (response.data.code === 200) {
-                            this.$message.success('提交成功，等待审核');
+                            this.$message.success(this.editingApplicationId ? '重新提交成功，等待审核' : '提交成功，等待审核');
                             this.submitDialogVisible = false;
                             this.loadMyApplications();
                         } else {
@@ -1195,6 +1661,10 @@
                         });
                         if (response.data.code === 200) {
                             this.myApplications = response.data.data || [];
+                            // 更新科研统计
+                            this.dashboardStats.researchApproved = this.myApplications.filter(a => a.status === '1').length;
+                            this.dashboardStats.researchPending = this.myApplications.filter(a => a.status === '0').length;
+                            this.dashboardStats.researchRejected = this.myApplications.filter(a => a.status === '2').length;
                         }
                     } catch (error) {
                         console.error('加载申请列表失败', error);
@@ -1207,6 +1677,8 @@
                         });
                         if (response.data.code === 200) {
                             this.applicationDetail = response.data.data;
+                            console.log('详情数据:', this.applicationDetail);
+                            console.log('附件URL:', this.applicationDetail.detail?.attachmentUrl);
                             this.detailDialogVisible = true;
                         }
                     } catch (error) {
@@ -1222,7 +1694,46 @@
                     const texts = { '0': '待审核', '1': '已通过', '2': '已拒绝' };
                     return texts[status] || '未知';
                 },
+                // 撤销申请
+                withdrawApplication(row) {
+                    this.$confirm('确认撤销该申请吗？撤销后将无法恢复。', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(async () => {
+                        try {
+                            const response = await axios.post(`/edu/research/withdraw/${row.applicationId}`, {}, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('撤销成功');
+                                this.loadMyApplications();
+                            } else {
+                                this.$message.error(response.data.message || '撤销失败');
+                            }
+                        } catch (error) {
+                            console.error('撤销失败', error);
+                            this.$message.error(error.response?.data?.message || '撤销失败');
+                        }
+                    }).catch(() => {});
+                },
+                // 下载PDF
+                downloadPdf(attachmentUrl) {
+                    if (!attachmentUrl) {
+                        this.$message.warning('没有附件');
+                        return;
+                    }
+                    const url = '/uploads/' + attachmentUrl;
+                    window.open(url, '_blank');
+                },
                 // 科研审核相关方法（仅教务老师）
+                handleResearchTabClick(tab) {
+                    if (tab.name === 'pending') {
+                        this.loadPendingResearch();
+                    } else if (tab.name === 'approved') {
+                        this.loadApprovedResearch();
+                    }
+                },
                 async loadPendingResearch() {
                     try {
                         const res = await axios.get('/edu/research/pending-audit', {
@@ -1233,6 +1744,19 @@
                         }
                     } catch (error) {
                         console.error('加载待审核列表失败', error);
+                        this.$message.error('加载失败');
+                    }
+                },
+                async loadApprovedResearch() {
+                    try {
+                        const res = await axios.get('/edu/research/approved-list', {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (res.data.code === 200) {
+                            this.approvedResearch = res.data.data || [];
+                        }
+                    } catch (error) {
+                        console.error('加载已审批列表失败', error);
                         this.$message.error('加载失败');
                     }
                 },
@@ -1307,6 +1831,65 @@
                     } catch (error) {
                         console.error('拒绝失败', error);
                         this.$message.error(error.response?.data?.message || '操作失败');
+                    }
+                },
+                // 竞赛审批相关方法
+                async loadCompetitionList() {
+                    try {
+                        let url = '/edu/competition/pending-list';
+                        if (this.competitionTab === 'approved') {
+                            url = '/edu/competition/all-list';
+                        }
+                        const response = await axios.get(url, {
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.competitionList = response.data.data || [];
+                        }
+                    } catch (error) {
+                        this.$message.error('加载失败');
+                    }
+                },
+                viewCompetitionDetail(row) {
+                    this.currentCompetition = row;
+                    this.competitionDetailVisible = true;
+                },
+                approveCompetition(row) {
+                    this.$confirm('确认通过该申报吗？', '提示', { type: 'warning' }).then(async () => {
+                        try {
+                            const response = await axios.put(`/edu/competition/approve/${row.awardId}`, {}, {
+                                headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                            });
+                            if (response.data.code === 200) {
+                                this.$message.success('审批通过');
+                                this.loadCompetitionList();
+                            }
+                        } catch (error) {
+                            this.$message.error('操作失败');
+                        }
+                    }).catch(() => {});
+                },
+                showRejectCompetitionDialog(row) {
+                    this.rejectCompetitionForm = { awardId: row.awardId, auditRemark: '' };
+                    this.rejectCompetitionVisible = true;
+                },
+                async confirmRejectCompetition() {
+                    if (!this.rejectCompetitionForm.auditRemark) {
+                        this.$message.warning('请输入驳回理由');
+                        return;
+                    }
+                    try {
+                        const response = await axios.put(`/edu/competition/reject/${this.rejectCompetitionForm.awardId}`, null, {
+                            params: { auditRemark: this.rejectCompetitionForm.auditRemark },
+                            headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }
+                        });
+                        if (response.data.code === 200) {
+                            this.$message.success('已驳回');
+                            this.rejectCompetitionVisible = false;
+                            this.loadCompetitionList();
+                        }
+                    } catch (error) {
+                        this.$message.error('操作失败');
                     }
                 }
             }
